@@ -1,2300 +1,382 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AgriMind – AI Farm Advisor</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js">
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet" />
-    <style>
-        :root {
-            --accent: #4ade80;
-            --accent-dim: rgba(74, 222, 128, 0.18);
-            --accent-glow: rgba(74, 222, 128, 0.45);
-            --accent-text: #86efac;
-            --text: #d4f5d4;
-            --text-dim: #7aaa7a;
-            --text-muted: #4a784a;
-            --bg: #060f08;
-            --g1: rgba(255, 255, 255, 0.04);
-            --g2: rgba(255, 255, 255, 0.07);
-            --gb: rgba(255, 255, 255, 0.12);
-            --gs: rgba(255, 255, 255, 0.22);
-            --gshadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 -1px 0 rgba(0, 0, 0, 0.2) inset;
-            --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-            --spring-soft: cubic-bezier(0.25, 1.1, 0.5, 1.05);
-            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        html {
-            scroll-behavior: smooth;
-        }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg);
-            min-height: 100vh;
-            color: var(--text);
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-            cursor: none;
-        }
-        body.bn {
-            font-family: 'Hind Siliguri', sans-serif;
-        }
-
-        #cursor-dot {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 8px;
-            height: 8px;
-            background: var(--accent);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 99999;
-            transform: translate(-50%, -50%);
-            transition: width 0.2s, height 0.2s, opacity 0.2s;
-            box-shadow: 0 0 12px var(--accent), 0 0 24px rgba(74, 222, 128, 0.4);
-        }
-        #cursor-ring {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 32px;
-            height: 32px;
-            border: 1.5px solid rgba(74, 222, 128, 0.5);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 99998;
-            transform: translate(-50%, -50%);
-            transition: transform 0.12s var(--ease-out), width 0.25s, height 0.25s, border-color 0.2s, opacity 0.2s;
-            backdrop-filter: blur(2px);
-        }
-        #cursor-trail-canvas {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 99990;
-        }
-        body:has(button:hover) #cursor-dot,
-        body:has(a:hover) #cursor-dot {
-            width: 14px;
-            height: 14px;
-            background: rgba(74, 222, 128, 0.5);
-        }
-        body:has(button:hover) #cursor-ring,
-        body:has(a:hover) #cursor-ring {
-            width: 48px;
-            height: 48px;
-            border-color: rgba(74, 222, 128, 0.8);
-        }
-
-        #blob-canvas {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            opacity: 0.7;
-        }
-        .scan {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(74, 222, 128, 0.006) 2px, rgba(74, 222, 128, 0.006) 4px);
-            animation: scan-drift 30s linear infinite;
-        }
-        @keyframes scan-drift {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 400px; }
-        }
-        #particle-canvas {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .lg {
-            background: var(--g1);
-            backdrop-filter: blur(32px) saturate(1.9) brightness(1.1);
-            -webkit-backdrop-filter: blur(32px) saturate(1.9) brightness(1.1);
-            border: 1px solid var(--gb);
-            box-shadow: var(--gshadow);
-            position: relative;
-        }
-        .lg::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--gs) 40%, rgba(255, 255, 255, 0.38) 50%, var(--gs) 60%, transparent);
-            border-radius: inherit;
-            pointer-events: none;
-            z-index: 1;
-        }
-        .lg::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            right: 10%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(74, 222, 128, 0.1), transparent);
-            border-radius: inherit;
-            pointer-events: none;
-        }
-        .ripple-host {
-            position: relative;
-            overflow: hidden;
-        }
-        .ripple {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(74, 222, 128, 0.25);
-            transform: scale(0);
-            animation: ripple-out 0.6s var(--ease-out) forwards;
-            pointer-events: none;
-        }
-        @keyframes ripple-out {
-            to { transform: scale(4); opacity: 0; }
-        }
-
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(6, 16, 9, 0.55);
-            backdrop-filter: blur(36px) saturate(2);
-            -webkit-backdrop-filter: blur(36px) saturate(2);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 24px rgba(0, 0, 0, 0.4);
-            animation: header-in 0.6s var(--ease-out) both;
-        }
-        @keyframes header-in {
-            from { transform: translateY(-100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .header-inner {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 10px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: none;
-            text-decoration: none;
-        }
-        .logo-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            background: linear-gradient(145deg, rgba(74, 222, 128, 0.22), rgba(22, 101, 52, 0.32), rgba(3, 10, 5, 0.5));
-            border: 1px solid rgba(74, 222, 128, 0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 4px 14px rgba(74, 222, 128, 0.15), 0 1px 0 rgba(255, 255, 255, 0.18) inset;
-            transition: transform 0.4s var(--spring), box-shadow 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        .logo-icon::before {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 8px;
-            width: 16px;
-            height: 8px;
-            background: radial-gradient(ellipse, rgba(255, 255, 255, 0.3), transparent 70%);
-            border-radius: 50%;
-            transform: rotate(-10deg);
-        }
-        .logo:hover .logo-icon {
-            transform: scale(1.14) rotate(-7deg);
-            box-shadow: 0 8px 28px rgba(74, 222, 128, 0.35), 0 1px 0 rgba(255, 255, 255, 0.24) inset;
-        }
-        .logo-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--accent-text);
-            line-height: 1.1;
-        }
-        .logo-sub {
-            font-size: 0.62rem;
-            color: var(--text-muted);
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-        }
-        .crop-select {
-            background: var(--g1);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            color: var(--accent-text);
-            padding: 7px 12px;
-            font-size: 0.8rem;
-            font-family: inherit;
-            outline: none;
-            cursor: none;
-            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-        }
-        .crop-select:hover,
-        .crop-select:focus {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(74, 222, 128, 0.35);
-            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.07), 0 2px 8px rgba(0, 0, 0, 0.25);
-        }
-        .crop-select option {
-            background: #0e1f11;
-            color: var(--text);
-        }
-        .lang-toggle {
-            display: flex;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            overflow: hidden;
-            background: var(--g1);
-            backdrop-filter: blur(12px);
-        }
-        .lang-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            padding: 6px 16px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            cursor: none;
-            font-family: inherit;
-            transition: all 0.28s var(--spring-soft);
-            position: relative;
-        }
-        .lang-btn.active {
-            background: rgba(74, 222, 128, 0.2);
-            color: var(--accent);
-        }
-
-        main {
-            position: relative;
-            z-index: 1;
-            max-width: 900px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 0 16px;
-        }
-        #home-view { padding-bottom: 24px; }
-
-        .hero-section {
-            text-align: center;
-            padding: 56px 20px 40px;
-        }
-        .split-text .char {
-            display: inline-block;
-            opacity: 0;
-            transform: translateY(40px) rotateX(40deg);
-            animation: char-in 0.6s var(--spring) forwards;
-        }
-        @keyframes char-in {
-            to { opacity: 1; transform: translateY(0) rotateX(0deg); }
-        }
-        .hero-title.bn-fade {
-            opacity: 0;
-            animation: fade-up 0.7s var(--ease-out) 0.5s forwards;
-        }
-        .hero-sub {
-            font-size: 1rem;
-            color: var(--text-dim);
-            max-width: 460px;
-            margin: 0 auto 28px;
-            line-height: 1.8;
-            font-weight: 300;
-            opacity: 0;
-            animation: fade-up 0.7s var(--ease-out) 0.9s forwards;
-        }
-        .hero-sub strong { color: var(--accent); font-weight: 500; }
-        @keyframes fade-up {
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .hero-orb-ring {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            margin-bottom: 32px;
-            perspective: 600px;
-        }
-        .hero-orb-ring::before {
-            content: '';
-            position: absolute;
-            width: 134px;
-            height: 134px;
-            border-radius: 40px;
-            border: 1px solid rgba(74, 222, 128, 0.13);
-            animation: ring-pulse 3.2s ease-in-out infinite;
-        }
-        .hero-orb-ring::after {
-            content: '';
-            position: absolute;
-            width: 158px;
-            height: 158px;
-            border-radius: 46px;
-            border: 1px solid rgba(74, 222, 128, 0.06);
-            animation: ring-pulse 3.2s ease-in-out infinite 0.6s;
-        }
-        @keyframes ring-pulse {
-            0%, 100% { opacity: 0.8; transform: scale(1); }
-            50% { opacity: 0.25; transform: scale(1.08); }
-        }
-
-        .hero-orb {
-            width: 104px;
-            height: 104px;
-            border-radius: 34px;
-            background: linear-gradient(145deg, rgba(74, 222, 128, 0.2), rgba(34, 197, 94, 0.1) 30%, rgba(22, 101, 52, 0.24) 65%, rgba(4, 12, 6, 0.48));
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 28px 80px rgba(74, 222, 128, 0.2), 0 4px 18px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 -1px 0 rgba(0, 0, 0, 0.28) inset, inset 2px 0 rgba(255, 255, 255, 0.05), inset -2px 0 rgba(0, 0, 0, 0.07);
-            backdrop-filter: blur(24px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 46px;
-            position: relative;
-            overflow: hidden;
-            animation: orb-float 5.5s ease-in-out infinite, orb-in 0.9s var(--spring) 0.3s both;
-            transform-style: preserve-3d;
-            will-change: transform;
-        }
-        .hero-orb::before {
-            content: '';
-            position: absolute;
-            top: 6px;
-            left: 14px;
-            width: 46px;
-            height: 21px;
-            background: radial-gradient(ellipse, rgba(255, 255, 255, 0.3), transparent 70%);
-            border-radius: 50%;
-            transform: rotate(-18deg);
-        }
-        .hero-orb::after {
-            content: '';
-            position: absolute;
-            bottom: 8px;
-            right: 12px;
-            width: 30px;
-            height: 14px;
-            background: radial-gradient(ellipse, rgba(74, 222, 128, 0.18), transparent 70%);
-            border-radius: 50%;
-        }
-        @keyframes orb-float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            33% { transform: translateY(-15px) rotate(3.5deg); }
-            66% { transform: translateY(-7px) rotate(-2.5deg); }
-        }
-        @keyframes orb-in {
-            from { transform: scale(0.35) rotate(-18deg); opacity: 0; }
-            to { transform: scale(1) rotate(0); opacity: 1; }
-        }
-
-        .orb-glow {
-            position: absolute;
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(74, 222, 128, 0.18), transparent 70%);
-            filter: blur(20px);
-            animation: glow-pulse 3s ease-in-out infinite;
-            pointer-events: none;
-        }
-        @keyframes glow-pulse {
-            0%, 100% { transform: scale(1); opacity: 0.7; }
-            50% { transform: scale(1.3); opacity: 1; }
-        }
-
-        .hero-title {
-            font-family: 'Playfair Display', serif;
-            font-size: clamp(2.1rem, 5.5vw, 3.1rem);
-            font-weight: 800;
-            color: var(--accent-text);
-            margin-bottom: 16px;
-            line-height: 1.12;
-            letter-spacing: -0.025em;
-            perspective: 800px;
-        }
-        body.bn .hero-title {
-            font-family: 'Hind Siliguri', sans-serif;
-            letter-spacing: 0;
-        }
-
-        .photo-cta {
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            background: linear-gradient(145deg, rgba(74, 222, 128, 0.14), rgba(22, 163, 74, 0.1));
-            border: 1.5px solid rgba(74, 222, 128, 0.38);
-            border-radius: 50px;
-            color: var(--accent);
-            padding: 13px 30px;
-            font-size: 0.92rem;
-            font-weight: 600;
-            cursor: none;
-            font-family: inherit;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 6px 28px rgba(74, 222, 128, 0.14), 0 1px 0 rgba(255, 255, 255, 0.14) inset;
-            transition: all 0.35s var(--spring);
-            position: relative;
-            overflow: hidden;
-            opacity: 0;
-            animation: fade-up 0.7s var(--ease-out) 1.1s forwards;
-        }
-        .photo-cta::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -120%;
-            width: 70%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.55s var(--ease-out);
-        }
-        .photo-cta:hover {
-            transform: scale(1.06) translateY(-3px);
-            box-shadow: 0 14px 44px rgba(74, 222, 128, 0.3), 0 1px 0 rgba(255, 255, 255, 0.18) inset;
-            border-color: rgba(74, 222, 128, 0.7);
-        }
-        .photo-cta:hover::before { left: 150%; }
-        .photo-cta:active { transform: scale(0.97); }
-
-        .quick-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 11px;
-            padding: 0 2px 36px;
-        }
-        .quick-card {
-            background: var(--g1);
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            border-radius: 22px;
-            padding: 22px 14px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            cursor: none;
-            font-family: inherit;
-            color: var(--accent-text);
-            backdrop-filter: blur(16px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-            transition: box-shadow 0.3s, border-color 0.25s, background 0.25s;
-            position: relative;
-            overflow: hidden;
-            opacity: 0;
-            animation: card-in var(--spring) forwards;
-            transform-style: preserve-3d;
-            will-change: transform;
-        }
-        .quick-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        }
-        .quick-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 60%;
-            height: 100%;
-            background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-            transition: left 0.5s var(--ease-out);
-            pointer-events: none;
-        }
-        .quick-card:hover::after { left: 130%; }
-        .quick-card:nth-child(1) { animation-delay: 0.5s; }
-        .quick-card:nth-child(2) { animation-delay: 0.62s; }
-        .quick-card:nth-child(3) { animation-delay: 0.74s; }
-        .quick-card:nth-child(4) { animation-delay: 0.86s; }
-        .quick-card:nth-child(5) { animation-delay: 0.98s; }
-        .quick-card:nth-child(6) { animation-delay: 1.1s; }
-        @keyframes card-in {
-            from { opacity: 0; transform: translateY(30px) scale(0.9); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .quick-card:active { transform: scale(0.96) !important; }
-        .quick-icon {
-            font-size: 28px;
-            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
-            transition: transform 0.35s var(--spring);
-        }
-        .quick-card:hover .quick-icon { transform: scale(1.25) rotate(7deg); }
-        .quick-label {
-            font-size: 0.76rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            text-align: center;
-            opacity: 0.9;
-        }
-
-        .stats-row {
-            display: flex;
-            justify-content: center;
-            gap: 11px;
-            padding: 0 2px 28px;
-            flex-wrap: wrap;
-        }
-        .stat-box {
-            background: var(--g1);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 18px 22px;
-            text-align: center;
-            min-width: 92px;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
-            opacity: 0;
-            animation: stat-in var(--spring) forwards;
-            transition: transform 0.3s var(--spring), box-shadow 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        .stat-box::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-        }
-        .stat-box:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 16px 44px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(74, 222, 128, 0.12), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
-        }
-        .stat-box:nth-child(1) { animation-delay: 1.05s; }
-        .stat-box:nth-child(2) { animation-delay: 1.18s; }
-        .stat-box:nth-child(3) { animation-delay: 1.31s; }
-        .stat-box:nth-child(4) { animation-delay: 1.44s; }
-        @keyframes stat-in {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .stat-icon { font-size: 22px; margin-bottom: 6px; }
-        .stat-val {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .stat-label {
-            font-size: 0.63rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.09em;
-            margin-top: 3px;
-        }
-
-        .dev-credit { text-align: center; padding: 18px 16px 12px; position: relative; z-index: 1; }
-        .dev-credit-inner {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: linear-gradient(135deg, rgba(74, 222, 128, 0.07), rgba(22, 101, 52, 0.1));
-            border: 1px solid rgba(74, 222, 128, 0.22);
-            border-radius: 22px;
-            padding: 9px 22px;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 4px 24px rgba(74, 222, 128, 0.07), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-            transition: transform 0.3s var(--spring), box-shadow 0.3s;
-        }
-        .dev-credit-inner:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 36px rgba(74, 222, 128, 0.16), 0 1px 0 rgba(255, 255, 255, 0.1) inset;
-        }
-        .dev-credit-text { font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.06em; }
-        .dev-credit-name {
-            font-family: 'Playfair Display', serif;
-            font-size: 0.88rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #4ade80, #86efac, #22c55e, #86efac, #4ade80);
-            background-size: 300% auto;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: 0.1em;
-            animation: shimmer 3.5s linear infinite;
-        }
-        @keyframes shimmer {
-            0% { background-position: 0% center; }
-            100% { background-position: 300% center; }
-        }
-        .dev-dot {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
-            flex-shrink: 0;
-            animation: dot-pulse 2s ease-in-out infinite;
-        }
-        @keyframes dot-pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.45; transform: scale(0.7); }
-        }
-
-        #chat-view {
-            display: none;
-            flex-direction: column;
-            height: calc(100vh - 175px);
-        }
-        #chat-view.active { display: flex; }
-        #messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px 4px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(74, 222, 128, 0.25) transparent;
-        }
-        #messages::-webkit-scrollbar { width: 3px; }
-        #messages::-webkit-scrollbar-thumb { background: rgba(74, 222, 128, 0.22); border-radius: 2px; }
-        .message-wrap { display: flex; align-items: flex-end; gap: 9px; }
-        .user-wrap { animation: msg-right 0.5s var(--spring) both; }
-        .ai-wrap { animation: msg-left 0.5s var(--spring) both; }
-        @keyframes msg-right {
-            from { opacity: 0; transform: translateX(28px) scale(0.92); }
-            to { opacity: 1; transform: translateX(0) scale(1); }
-        }
-        @keyframes msg-left {
-            from { opacity: 0; transform: translateX(-28px) scale(0.92); }
-            to { opacity: 1; transform: translateX(0) scale(1); }
-        }
-        .avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, rgba(74, 222, 128, 0.18), rgba(22, 101, 52, 0.28));
-            border: 1px solid rgba(74, 222, 128, 0.28);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 15px;
-            flex-shrink: 0;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
-        }
-        .avatar-user {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-        .user-bubble {
-            background: linear-gradient(160deg, #166534, #14532d 70%, #0f3d22);
-            border-radius: 20px 20px 6px 20px;
-            padding: 11px 16px;
-            max-width: 76%;
-            font-size: 0.88rem;
-            line-height: 1.68;
-            color: #dcfce7;
-            box-shadow: 0 6px 24px rgba(22, 101, 52, 0.5), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
-            position: relative;
-            overflow: hidden;
-        }
-        .user-bubble::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
-        }
-        .ai-bubble {
-            background: rgba(14, 30, 17, 0.72);
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            border-radius: 20px 20px 20px 6px;
-            padding: 13px 17px;
-            max-width: 80%;
-            font-size: 0.87rem;
-            line-height: 1.75;
-            backdrop-filter: blur(24px);
-            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-            color: #c4e8c4;
-            position: relative;
-            overflow: hidden;
-        }
-        .ai-bubble::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.13), transparent);
-        }
-        .msg-image {
-            max-width: 100%;
-            max-height: 230px;
-            border-radius: 15px;
-            object-fit: cover;
-            display: block;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 7px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-        }
-        .typing-dots { display: flex; gap: 5px; align-items: center; height: 22px; }
-        .dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--accent);
-            animation: dot-bounce 1.4s ease-in-out infinite;
-            box-shadow: 0 0 7px rgba(74, 222, 128, 0.55);
-        }
-        @keyframes dot-bounce {
-            0%, 60%, 100% { transform: translateY(0) scale(1); opacity: 0.55; }
-            30% { transform: translateY(-9px) scale(1.18); opacity: 1; }
-        }
-        .dot:nth-child(2) { animation-delay: 0.16s; }
-        .dot:nth-child(3) { animation-delay: 0.32s; }
-        .cursor-blink { animation: blink 0.9s ease-in-out infinite; color: var(--accent); }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        .quick-strip {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding: 9px 0 5px;
-            scrollbar-width: none;
-            flex-shrink: 0;
-        }
-        .quick-strip::-webkit-scrollbar { display: none; }
-        .strip-btn {
-            background: var(--g1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50px;
-            padding: 7px 16px;
-            color: var(--accent-text);
-            font-size: 0.74rem;
-            cursor: none;
-            white-space: nowrap;
-            font-family: inherit;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
-            transition: all 0.28s var(--spring-soft);
-        }
-        .strip-btn:hover {
-            background: rgba(74, 222, 128, 0.12);
-            border-color: rgba(74, 222, 128, 0.3);
-            transform: scale(1.07) translateY(-2px);
-            box-shadow: 0 8px 20px rgba(74, 222, 128, 0.14);
-        }
-        .strip-btn:active { transform: scale(0.95); }
-
-        footer {
-            position: sticky;
-            bottom: 0;
-            background: rgba(6, 16, 9, 0.68);
-            backdrop-filter: blur(36px) saturate(2);
-            -webkit-backdrop-filter: blur(36px) saturate(2);
-            border-top: 1px solid rgba(255, 255, 255, 0.07);
-            padding: 11px 16px;
-            z-index: 100;
-            box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.05), 0 -8px 32px rgba(0, 0, 0, 0.3);
-        }
-        .pending-bar { max-width: 900px; margin: 0 auto 9px; }
-        .pending-inner {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(74, 222, 128, 0.07);
-            border: 1px solid rgba(74, 222, 128, 0.24);
-            border-radius: 16px;
-            padding: 8px 11px;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 2px 12px rgba(74, 222, 128, 0.08), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-            animation: slide-up 0.4s var(--spring) both;
-        }
-        @keyframes slide-up {
-            from { opacity: 0; transform: translateY(14px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .pending-thumb {
-            width: 48px;
-            height: 48px;
-            border-radius: 11px;
-            object-fit: cover;
-            border: 1px solid rgba(74, 222, 128, 0.32);
-            flex-shrink: 0;
-        }
-        .pending-info { flex: 1; min-width: 0; }
-        .pending-name {
-            display: block;
-            font-size: 0.79rem;
-            font-weight: 600;
-            color: var(--accent-text);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .pending-hint-text { display: block; font-size: 0.67rem; color: var(--text-muted); margin-top: 2px; }
-        .remove-btn {
-            background: rgba(255, 80, 80, 0.1);
-            border: 1px solid rgba(255, 100, 100, 0.22);
-            border-radius: 50%;
-            color: #fca5a5;
-            width: 26px;
-            height: 26px;
-            font-size: 0.65rem;
-            cursor: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            transition: transform 0.25s var(--spring), background 0.2s;
-        }
-        .remove-btn:hover { background: rgba(255, 80, 80, 0.22); transform: scale(1.14) rotate(90deg); }
-        .input-row { max-width: 900px; margin: 0 auto; display: flex; gap: 9px; align-items: flex-end; }
-        .img-btn {
-            background: var(--g1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            width: 46px;
-            height: 46px;
-            font-size: 1.08rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: none;
-            flex-shrink: 0;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-            transition: transform 0.28s var(--spring), background 0.2s, border-color 0.2s, box-shadow 0.2s;
-        }
-        .img-btn:hover { background: rgba(255, 255, 255, 0.09); transform: scale(1.11); }
-        .img-btn:active { transform: scale(0.9); }
-        .img-btn.has-image {
-            background: rgba(74, 222, 128, 0.18);
-            border-color: rgba(74, 222, 128, 0.45);
-            box-shadow: 0 0 22px rgba(74, 222, 128, 0.24), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
-        }
-        textarea#chat-input {
-            flex: 1;
-            background: var(--g2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            color: var(--text);
-            padding: 12px 15px;
-            font-size: 0.88rem;
-            font-family: inherit;
-            outline: none;
-            resize: none;
-            line-height: 1.5;
-            min-height: 46px;
-            max-height: 120px;
-            backdrop-filter: blur(12px);
-            transition: border-color 0.28s, box-shadow 0.28s, background 0.22s;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-        }
-        textarea#chat-input:focus {
-            border-color: rgba(74, 222, 128, 0.38);
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.09), 0 2px 10px rgba(0, 0, 0, 0.18);
-        }
-        textarea#chat-input::placeholder { color: var(--text-muted); }
-        .send-btn {
-            background: linear-gradient(155deg, #22c55e, #16a34a);
-            border: none;
-            border-radius: 15px;
-            color: #fff;
-            width: 46px;
-            height: 46px;
-            font-size: 1.05rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            cursor: none;
-            box-shadow: 0 5px 22px rgba(22, 163, 74, 0.48), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
-            transition: transform 0.3s var(--spring), box-shadow 0.3s, opacity 0.2s;
-        }
-        .send-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
-        .send-btn:not(:disabled):hover {
-            transform: scale(1.13);
-            box-shadow: 0 10px 36px rgba(22, 163, 74, 0.62), 0 1px 0 rgba(255, 255, 255, 0.3) inset;
-        }
-        .send-btn:not(:disabled):active { transform: scale(0.9); }
-        .disclaimer { text-align: center; font-size: 0.65rem; color: var(--text-muted); margin: 7px auto 0; max-width: 900px; opacity: 0.65; }
-        .msg-heading { display: block; font-weight: 700; color: var(--accent-text); margin: 10px 0 4px; font-size: 0.93em; }
-        .msg-bullet { display: block; padding-left: 8px; margin: 3px 0; }
-        .send-flash { animation: send-pop 0.4s var(--spring); }
-        @keyframes send-pop {
-            0% { transform: scale(1); }
-            40% { transform: scale(0.85); }
-            70% { transform: scale(1.18); }
-            100% { transform: scale(1); }
-        }
-
-        #welcome-splash {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            background: #030809;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out);
-        }
-        #welcome-splash.hide { opacity: 0; transform: scale(1.05); pointer-events: none; }
-        .splash-ambient {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background: radial-gradient(ellipse 65% 45% at 25% 15%, rgba(22, 101, 52, 0.45), transparent), radial-gradient(ellipse 55% 55% at 75% 85%, rgba(12, 50, 25, 0.38), transparent), radial-gradient(ellipse 35% 35% at 50% 50%, rgba(74, 222, 128, 0.06), transparent);
-        }
-        .splash-grid {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0.02;
-            background-image: repeating-linear-gradient(0deg, rgba(74, 222, 128, 1) 0, rgba(74, 222, 128, 1) 1px, transparent 1px, transparent 44px), repeating-linear-gradient(90deg, rgba(74, 222, 128, 1) 0, rgba(74, 222, 128, 1) 1px, transparent 1px, transparent 44px);
-        }
-        #splash-particle-canvas { position: absolute; inset: 0; pointer-events: none; }
-        .splash-pill {
-            position: absolute;
-            top: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(6, 14, 8, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50px;
-            padding: 7px 20px;
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            font-size: 0.74rem;
-            color: var(--text-muted);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
-            backdrop-filter: blur(20px);
-            animation: pill-in 0.7s var(--spring) 0.4s both;
-        }
-        .splash-pill-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
-            animation: dot-pulse 2s ease-in-out infinite;
-        }
-        @keyframes pill-in {
-            from { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(0.88); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-        }
-        .splash-card {
-            position: relative;
-            z-index: 2;
-            background: rgba(255, 255, 255, 0.035);
-            border: 1px solid rgba(255, 255, 255, 0.11);
-            border-radius: 38px;
-            padding: 50px 50px 42px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            backdrop-filter: blur(48px) saturate(2.2) brightness(1.08);
-            -webkit-backdrop-filter: blur(48px) saturate(2.2) brightness(1.08);
-            box-shadow: 0 36px 90px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(255, 255, 255, 0.16) inset, 0 -1px 0 rgba(0, 0, 0, 0.25) inset, inset 2px 0 rgba(255, 255, 255, 0.03), inset -2px 0 rgba(0, 0, 0, 0.05);
-            animation: card-rise var(--spring) 0.25s both;
-            max-width: 370px;
-            width: calc(100% - 48px);
-        }
-        .splash-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 16px;
-            right: 16px;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.12), transparent);
-            border-radius: 999px;
-        }
-        @keyframes card-rise {
-            from { opacity: 0; transform: scale(0.87) translateY(38px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        .splash-icon {
-            width: 88px;
-            height: 88px;
-            border-radius: 26px;
-            background: linear-gradient(150deg, rgba(74, 222, 128, 0.2), rgba(22, 101, 52, 0.28), rgba(4, 10, 6, 0.5));
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 20px 56px rgba(74, 222, 128, 0.22), 0 1px 0 rgba(255, 255, 255, 0.24) inset;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            margin-bottom: 22px;
-            position: relative;
-            overflow: hidden;
-            animation: icon-pop var(--spring) 0.5s both;
-        }
-        .splash-icon::before {
-            content: '';
-            position: absolute;
-            top: 5px;
-            left: 13px;
-            width: 38px;
-            height: 17px;
-            background: radial-gradient(ellipse, rgba(255, 255, 255, 0.26), transparent 70%);
-            border-radius: 50%;
-            transform: rotate(-18deg);
-        }
-        @keyframes icon-pop {
-            from { transform: scale(0.3) rotate(-20deg); opacity: 0; }
-            to { transform: scale(1) rotate(0); opacity: 1; }
-        }
-        .splash-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 2.9rem;
-            font-weight: 800;
-            color: var(--accent-text);
-            letter-spacing: -0.032em;
-            line-height: 1;
-            opacity: 0;
-            transform: translateY(16px);
-            animation: fade-up2 0.6s var(--ease-out) 0.68s forwards;
-        }
-        .splash-tagline {
-            font-size: 0.73rem;
-            color: var(--text-muted);
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            margin-top: 5px;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fade-up2 0.6s var(--ease-out) 0.84s forwards;
-        }
-        .splash-desc {
-            margin-top: 20px;
-            text-align: center;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fade-up2 0.6s var(--ease-out) 1.0s forwards;
-        }
-        .splash-desc p { font-size: 0.88rem; color: var(--text-dim); line-height: 1.72; font-weight: 300; }
-        .splash-desc strong { color: var(--accent); font-weight: 500; }
-        @keyframes fade-up2 {
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .progress-wrap { margin-top: 30px; width: 170px; opacity: 0; animation: fade-up2 0.5s var(--ease-out) 1.22s forwards; }
-        .progress-track { height: 2.5px; background: rgba(255, 255, 255, 0.08); border-radius: 99px; overflow: hidden; }
-        .progress-bar {
-            height: 100%;
-            width: 0%;
-            border-radius: 99px;
-            background: linear-gradient(90deg, #166534, #22c55e, #86efac);
-            animation: fill 2.1s var(--ease-out) 1.32s forwards;
-            box-shadow: 0 0 12px rgba(74, 222, 128, 0.7);
-        }
-        @keyframes fill {
-            0% { width: 0%; }
-            100% { width: 100%; }
-        }
-        .progress-label { text-align: center; margin-top: 8px; font-size: 0.67rem; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; }
-        .splash-btn {
-            margin-top: 26px;
-            background: linear-gradient(155deg, #22c55e, #16a34a);
-            border: none;
-            border-radius: 50px;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.93rem;
-            font-weight: 600;
-            padding: 14px 38px;
-            cursor: none;
-            box-shadow: 0 7px 32px rgba(22, 163, 74, 0.48), 0 1px 0 rgba(255, 255, 255, 0.28) inset;
-            opacity: 0;
-            transform: translateY(12px) scale(0.94);
-            animation: btn-in var(--spring) 1.85s forwards;
-            transition: transform 0.35s var(--spring), box-shadow 0.3s;
-            position: relative;
-            overflow: hidden;
-            letter-spacing: 0.025em;
-        }
-        .splash-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -120%;
-            width: 65%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
-            transition: left 0.55s;
-        }
-        .splash-btn:hover {
-            transform: scale(1.07) translateY(-3px) !important;
-            box-shadow: 0 13px 44px rgba(22, 163, 74, 0.58), 0 1px 0 rgba(255, 255, 255, 0.3) inset;
-        }
-        .splash-btn:hover::before { left: 150%; }
-        @keyframes btn-in {
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .leaf {
-            position: absolute;
-            font-size: 1.25rem;
-            opacity: 0;
-            pointer-events: none;
-            animation: leaf-drift linear infinite;
-            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
-        }
-        @keyframes leaf-drift {
-            0% { opacity: 0; transform: translateY(24px) rotate(0deg) scale(0.8); }
-            15% { opacity: 0.45; }
-            85% { opacity: 0.18; }
-            100% { opacity: 0; transform: translateY(-100px) rotate(32deg) scale(1.1); }
-        }
-
-        /* ═══════════════════════════════════════════════════════
-           AI PET – SPROUT THE FARM BUDDY (press reaction enhanced)
-        ═══════════════════════════════════════════════════════ */
-        #ai-pet {
-            position: fixed;
-            bottom: 130px;
-            right: 22px;
-            z-index: 50;
-            user-select: none;
-            -webkit-user-select: none;
-            transition: transform 0.4s var(--spring);
-            cursor: none;
-        }
-        #ai-pet.minimized { transform: scale(0.45) translateY(60px); opacity: 0.7; }
-        #ai-pet.minimized:hover { opacity: 1; transform: scale(0.55) translateY(56px); }
-        #ai-pet.dragging { transition: none; z-index: 60; }
-
-        .pet-body-wrapper {
-            position: relative;
-            width: 62px;
-            height: 82px;
-            animation: pet-idle-bob 3.2s ease-in-out infinite;
-            filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45));
-        }
-        #ai-pet.minimized .pet-body-wrapper { animation: pet-idle-bob 6s ease-in-out infinite; }
-        /* Enhanced press reaction: squish on active */
-        #ai-pet:active .pet-body-wrapper {
-            transform: scale(0.85);
-            transition: transform 0.1s ease-out;
-        }
-        .pet-body-wrapper.walking {
-            animation: pet-walk-sway 0.55s ease-in-out infinite, pet-idle-bob 1.8s ease-in-out infinite;
-        }
-        @keyframes pet-walk-sway {
-            0%, 100% { transform: translateX(0) rotate(0deg); }
-            25% { transform: translateX(3px) rotate(2deg); }
-            75% { transform: translateX(-3px) rotate(-2deg); }
-        }
-        @keyframes pet-idle-bob {
-            0%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-7px); }
-            60% { transform: translateY(-2px); }
-            85% { transform: translateY(-5px); }
-        }
-
-        .pet-shadow {
-            position: absolute;
-            bottom: 2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 36px;
-            height: 8px;
-            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55), transparent 70%);
-            border-radius: 50%;
-            animation: pet-shadow-pulse 3.2s ease-in-out infinite;
-        }
-        @keyframes pet-shadow-pulse {
-            0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; }
-            30% { transform: translateX(-50%) scale(0.75); opacity: 0.45; }
-            60% { transform: translateX(-50%) scale(0.9); opacity: 0.6; }
-            85% { transform: translateX(-50%) scale(0.8); opacity: 0.5; }
-        }
-
-        .pet-pot {
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 34px;
-            height: 24px;
-            background: linear-gradient(170deg, #c67a4b, #a0522d 40%, #7a3e1f 80%);
-            border-radius: 4px 4px 10px 10px;
-            border: 1.5px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
-        }
-        .pet-pot::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 3px;
-            right: 3px;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 2px;
-        }
-
-        .pet-stem {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 7px;
-            height: 22px;
-            background: linear-gradient(180deg, #4ade80, #22c55e 60%, #16a34a);
-            border-radius: 3px 3px 0 0;
-            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
-        }
-
-        .pet-head {
-            position: absolute;
-            bottom: 36px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 44px;
-            height: 40px;
-            background: radial-gradient(ellipse at 40% 30%, #86efac, #4ade80 50%, #22c55e 85%);
-            border-radius: 50% 50% 45% 45%;
-            border: 1.5px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 6px 20px rgba(74, 222, 128, 0.35), 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 -2px 4px rgba(0, 0, 0, 0.1) inset;
-            transition: transform 0.25s var(--spring);
-        }
-        #ai-pet:hover .pet-head { transform: translateX(-50%) scale(1.08) rotate(-3deg); }
-        #ai-pet:active .pet-head { transform: translateX(-50%) scale(0.88) rotate(6deg); }
-
-        .pet-leaf {
-            position: absolute;
-            width: 16px;
-            height: 10px;
-            background: linear-gradient(135deg, #86efac, #22c55e);
-            border-radius: 50% 10% 50% 10%;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s var(--spring);
-        }
-        .pet-leaf-left {
-            top: -2px;
-            left: -9px;
-            transform: rotate(-30deg);
-            animation: leaf-wiggle-left 2.8s ease-in-out infinite;
-        }
-        .pet-leaf-right {
-            top: -2px;
-            right: -9px;
-            transform: rotate(30deg) scaleX(-1);
-            animation: leaf-wiggle-right 2.8s ease-in-out infinite 0.4s;
-        }
-        @keyframes leaf-wiggle-left {
-            0%, 100% { transform: rotate(-30deg); }
-            40% { transform: rotate(-42deg); }
-            70% { transform: rotate(-22deg); }
-        }
-        @keyframes leaf-wiggle-right {
-            0%, 100% { transform: rotate(30deg) scaleX(-1); }
-            40% { transform: rotate(42deg) scaleX(-1); }
-            70% { transform: rotate(20deg) scaleX(-1); }
-        }
-        #ai-pet:hover .pet-leaf-left { transform: rotate(-48deg) scale(1.15); }
-        #ai-pet:hover .pet-leaf-right { transform: rotate(48deg) scaleX(-1) scale(1.15); }
-
-        .pet-face { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 28px; height: 22px; }
-        .pet-eye { position: absolute; top: 2px; width: 7px; height: 8px; background: #1a3a1a; border-radius: 50%; transition: transform 0.15s; }
-        .pet-eye-left { left: 4px; }
-        .pet-eye-right { right: 4px; }
-        .pet-pupil {
-            position: absolute;
-            top: 1px;
-            left: 1.5px;
-            width: 3px;
-            height: 3px;
-            background: #fff;
-            border-radius: 50%;
-            transition: transform 0.08s;
-            box-shadow: 0 0 2px rgba(255, 255, 255, 0.6);
-        }
-        .pet-mouth {
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 9px;
-            height: 5px;
-            border-bottom: 2px solid #1a5a1a;
-            border-radius: 0 0 50% 50%;
-            transition: all 0.25s;
-        }
-        #ai-pet.happy .pet-mouth { width: 12px; height: 7px; border-bottom-width: 2.5px; }
-        #ai-pet.surprised .pet-mouth { width: 7px; height: 7px; border-radius: 50%; border-bottom: none; background: #1a5a1a; }
-
-        .pet-speech-bubble {
-            position: absolute;
-            bottom: 88px;
-            left: 50%;
-            transform: translateX(-50%) translateY(8px);
-            background: rgba(14, 30, 17, 0.92);
-            border: 1px solid rgba(74, 222, 128, 0.3);
-            border-radius: 16px;
-            padding: 9px 14px;
-            font-size: 0.7rem;
-            color: #c4e8c4;
-            white-space: nowrap;
-            max-width: 200px;
-            text-align: center;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.35s var(--ease-out), transform 0.35s var(--spring);
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-            backdrop-filter: blur(12px);
-            font-family: inherit;
-            line-height: 1.4;
-            z-index: 2;
-        }
-        .pet-speech-bubble::after {
-            content: '';
-            position: absolute;
-            bottom: -7px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 7px solid transparent;
-            border-right: 7px solid transparent;
-            border-top: 8px solid rgba(14, 30, 17, 0.92);
-        }
-        .pet-speech-bubble.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        body.bn .pet-speech-bubble { font-family: 'Hind Siliguri', sans-serif; font-size: 0.68rem; max-width: 180px; }
-
-        .pet-sparkle {
-            position: absolute;
-            pointer-events: none;
-            font-size: 0.75rem;
-            animation: sparkle-fly 0.8s var(--ease-out) forwards;
-            z-index: 3;
-            filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.6));
-        }
-        @keyframes sparkle-fly {
-            0% { opacity: 1; transform: translate(0, 0) scale(1); }
-            100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.2); }
-        }
-
-        .pet-zzz {
-            position: absolute;
-            pointer-events: none;
-            font-size: 0.6rem;
-            color: #86efac;
-            opacity: 0;
-            animation: zzz-float 2s ease-in-out infinite;
-            z-index: 2;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-        }
-        .pet-zzz:nth-child(1) { animation-delay: 0s; right: -14px; top: -12px; }
-        .pet-zzz:nth-child(2) { animation-delay: 0.7s; right: -20px; top: -22px; font-size: 0.75rem; }
-        .pet-zzz:nth-child(3) { animation-delay: 1.4s; right: -16px; top: -32px; font-size: 0.9rem; }
-        @keyframes zzz-float {
-            0% { opacity: 0; transform: translateY(0) translateX(0); }
-            30% { opacity: 0.8; }
-            100% { opacity: 0; transform: translateY(-30px) translateX(8px); }
-        }
-
-        @media(max-width:480px) {
-            #ai-pet { bottom: 110px; right: 10px; }
-            .pet-body-wrapper { width: 48px; height: 64px; }
-            .pet-head { width: 34px; height: 32px; bottom: 28px; }
-            .pet-stem { width: 5px; height: 17px; bottom: 15px; }
-            .pet-pot { width: 26px; height: 18px; }
-            .pet-leaf { width: 12px; height: 8px; }
-            .pet-leaf-left { left: -6px; }
-            .pet-leaf-right { right: -6px; }
-            .pet-face { width: 22px; height: 17px; top: 7px; }
-            .pet-eye { width: 5px; height: 6px; top: 1px; }
-            .pet-pupil { width: 2px; height: 2px; left: 1px; top: 1px; }
-            .pet-mouth { width: 7px; height: 4px; }
-            .pet-speech-bubble { bottom: 68px; font-size: 0.62rem; padding: 7px 10px; max-width: 140px; border-radius: 12px; }
-            .pet-speech-bubble::after { border-left-width: 5px; border-right-width: 5px; border-top-width: 6px; bottom: -5px; }
-            .splash-card { padding: 38px 28px 34px; border-radius: 30px; }
-            .splash-title { font-size: 2.3rem; }
-            .quick-grid { grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); }
-        }
-        @media(prefers-reduced-motion:reduce) {
-            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>AgriMind • AI Farm Advisor</title>
+  <!-- Tailwind + Fonts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --accent: #4ade80;
+      --accent-dim: rgba(74, 222, 128, 0.18);
+      --accent-glow: rgba(74, 222, 128, 0.45);
+      --accent-text: #86efac;
+      --text: #d4f5d4;
+      --text-dim: #7aaa7a;
+      --text-muted: #4a784a;
+      --bg: #060f08;
+      --g1: rgba(255,255,255,0.04);
+      --g2: rgba(255,255,255,0.07);
+      --gb: rgba(255,255,255,0.12);
+      --gs: rgba(255,255,255,0.22);
+      --gshadow: 0 8px 40px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.1) inset, 0 -1px 0 rgba(0,0,0,0.2) inset;
+      --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --spring-soft: cubic-bezier(0.25, 1.1, 0.5, 1.05);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    * { box-sizing: border-box; margin:0; padding:0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      cursor: none;
+    }
+    body.bn { font-family: 'Hind Siliguri', sans-serif; }
+    #cursor-dot, #cursor-ring, #cursor-trail-canvas { position:fixed; top:0; left:0; pointer-events:none; z-index:99999; }
+    #cursor-dot { width:8px; height:8px; background:var(--accent); border-radius:50%; transform:translate(-50%,-50%); transition: width 0.2s, height 0.2s; box-shadow:0 0 12px var(--accent); }
+    #cursor-ring { width:32px; height:32px; border:1.5px solid rgba(74,222,128,0.5); border-radius:50%; transform:translate(-50%,-50%); transition: transform 0.12s var(--ease-out), width 0.25s, height 0.25s; backdrop-filter:blur(2px); }
+    #cursor-trail-canvas { z-index:99990; }
+    body:has(button:hover) #cursor-dot, body:has(a:hover) #cursor-dot { width:14px; height:14px; }
+    body:has(button:hover) #cursor-ring { width:48px; height:48px; border-color:rgba(74,222,128,0.8); }
+    #blob-canvas, #particle-canvas, .scan { position:fixed; inset:0; z-index:0; pointer-events:none; }
+    .scan { background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(74,222,128,0.006) 2px, rgba(74,222,128,0.006) 4px); animation: scan-drift 30s linear infinite; }
+    @keyframes scan-drift { 0%{background-position:0 0;} 100%{background-position:0 400px;} }
+    .lg { background:var(--g1); backdrop-filter:blur(32px); border:1px solid var(--gb); box-shadow:var(--gshadow); position:relative; }
+    .ripple-host { position:relative; overflow:hidden; }
+    .ripple { position:absolute; border-radius:50%; background:rgba(74,222,128,0.25); transform:scale(0); animation:ripple-out 0.6s var(--ease-out) forwards; pointer-events:none; }
+    @keyframes ripple-out { to{transform:scale(4); opacity:0;} }
+    header { position:sticky; top:0; z-index:100; background:rgba(6,16,9,0.55); backdrop-filter:blur(36px); border-bottom:1px solid rgba(255,255,255,0.08); }
+    .header-inner { max-width:1000px; margin:0 auto; padding:10px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .logo { display:flex; align-items:center; gap:10px; cursor:none; text-decoration:none; }
+    .logo-icon { width:38px; height:38px; border-radius:12px; background:linear-gradient(145deg, rgba(74,222,128,0.22), rgba(22,101,52,0.32)); border:1px solid rgba(74,222,128,0.25); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .logo-title { font-family:'Playfair Display',serif; font-size:1.2rem; font-weight:700; color:var(--accent-text); }
+    .crop-select { background:var(--g1); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:var(--accent-text); padding:7px 12px; outline:none; }
+    .lang-toggle { display:flex; border:1px solid rgba(255,255,255,0.1); border-radius:12px; overflow:hidden; }
+    .lang-btn { background:transparent; border:none; color:var(--text-muted); padding:6px 16px; font-weight:600; cursor:none; }
+    .lang-btn.active { background:rgba(74,222,128,0.2); color:var(--accent); }
+    main { position:relative; z-index:1; max-width:900px; margin:0 auto; padding:0 16px; }
+    #home-view { padding-bottom:24px; }
+    .hero-title { font-family:'Playfair Display',serif; font-size:clamp(2rem,5vw,3rem); color:var(--accent-text); }
+    .quick-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap:11px; }
+    .quick-card { background:var(--g1); border:1px solid rgba(255,255,255,0.09); border-radius:22px; padding:22px 14px; display:flex; flex-direction:column; align-items:center; gap:10px; cursor:none; color:var(--accent-text); backdrop-filter:blur(16px); }
+    .stats-row { display:flex; justify-content:center; gap:11px; flex-wrap:wrap; padding:28px 0; }
+    .stat-box { background:var(--g1); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:18px 22px; text-align:center; backdrop-filter:blur(16px); }
+    #chat-view { display:none; flex-direction:column; height:calc(100vh - 170px); }
+    #chat-view.active { display:flex; }
+    #messages { flex:1; overflow-y:auto; padding:20px 4px; display:flex; flex-direction:column; gap:15px; }
+    .message-wrap { display:flex; align-items:flex-end; gap:9px; }
+    .user-bubble { background:linear-gradient(160deg,#166534,#14532d); border-radius:20px 20px 6px 20px; padding:11px 16px; max-width:76%; color:#dcfce7; }
+    .ai-bubble { background:rgba(14,30,17,0.72); border:1px solid rgba(255,255,255,0.09); border-radius:20px 20px 20px 6px; padding:13px 17px; max-width:80%; backdrop-filter:blur(24px); }
+    footer { position:sticky; bottom:0; background:rgba(6,16,9,0.68); backdrop-filter:blur(36px); border-top:1px solid rgba(255,255,255,0.07); padding:11px 16px; z-index:100; }
+    .input-row { display:flex; gap:9px; align-items:flex-end; max-width:900px; margin:0 auto; }
+    textarea#chat-input { flex:1; background:var(--g2); border:1px solid rgba(255,255,255,0.1); border-radius:15px; color:var(--text); padding:12px; resize:none; }
+    .send-btn { background:linear-gradient(155deg,#22c55e,#16a34a); border:none; border-radius:15px; color:#fff; width:46px; height:46px; }
+    
+    /* pets container */
+    .pets-container { position:fixed; bottom:130px; right:22px; z-index:50; display:flex; flex-direction:column-reverse; align-items:flex-end; gap:20px; }
+    #ai-pet, #mango-tree { position:relative; user-select:none; transition: transform 0.4s var(--spring); cursor:none; }
+    #ai-pet.minimized, #mango-tree.minimized { transform:scale(0.45) translateY(60px); opacity:0.7; }
+    /* pet styles reused */
+    .pet-body-wrapper { position:relative; width:62px; height:82px; filter:drop-shadow(0 8px 18px rgba(0,0,0,0.45)); }
+    .tree-body { position:relative; width:70px; height:90px; filter:drop-shadow(0 8px 18px rgba(0,0,0,0.5)); }
+    .mango-canopy { width:60px; height:55px; background:radial-gradient(circle at 40% 30%, #2d5a27, #1e3b1a); border-radius:50% 50% 45% 45%; position:absolute; top:0; left:5px; box-shadow:0 4px 12px rgba(0,0,0,0.4); }
+    .mango-trunk { width:14px; height:35px; background:linear-gradient(180deg, #8B5A2B, #5C3A1E); position:absolute; bottom:5px; left:28px; border-radius:4px; }
+    .mango-fruit { position:absolute; width:14px; height:14px; background:radial-gradient(circle at 30% 30%, #FFB347, #FF8C00); border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
+    .tree-speech { position:absolute; bottom:95px; left:50%; transform:translateX(-50%); background:rgba(14,30,17,0.92); border:1px solid rgba(74,222,128,0.3); border-radius:16px; padding:6px 12px; font-size:0.65rem; color:#c4e8c4; white-space:nowrap; opacity:0; transition:0.3s; pointer-events:none; }
+    .tree-speech.show { opacity:1; }
+    .google-btn { background:white; color:#1f1f1f; border-radius:20px; padding:8px 18px; font-weight:600; font-size:0.8rem; display:flex; align-items:center; gap:6px; cursor:pointer; border:none; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+    .user-profile { display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); border-radius:20px; padding:4px 12px 4px 4px; }
+    .avatar-img { width:32px; height:32px; border-radius:50%; }
+    #history-panel { position:fixed; right:20px; top:80px; background:rgba(6,16,9,0.9); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:16px; width:260px; max-height:60vh; overflow-y:auto; z-index:200; display:none; }
+    .history-item { padding:8px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.7rem; cursor:pointer; }
+  </style>
 </head>
-<body>
+<body class="en">
+  <div id="cursor-dot"></div><div id="cursor-ring"></div><canvas id="cursor-trail-canvas"></canvas>
+  <canvas id="blob-canvas"></canvas><canvas id="particle-canvas"></canvas><div class="scan"></div>
 
-    <div id="cursor-dot"></div>
-    <div id="cursor-ring"></div>
-    <canvas id="cursor-trail-canvas"></canvas>
-    <canvas id="blob-canvas"></canvas>
-    <canvas id="particle-canvas"></canvas>
-    <div class="scan"></div>
-
-    <div id="welcome-splash">
-        <div class="splash-ambient"></div>
-        <div class="splash-grid"></div>
-        <canvas id="splash-particle-canvas"></canvas>
-        <div class="splash-pill"><div class="splash-pill-dot"></div><span id="splash-pill-text">AgriMind is ready</span></div>
-        <span class="leaf" style="left:7%;bottom:20%;animation-duration:7s;animation-delay:1.3s;">🌿</span>
-        <span class="leaf" style="left:83%;bottom:26%;animation-duration:8.5s;animation-delay:2.6s;">🍃</span>
-        <span class="leaf" style="left:57%;bottom:10%;animation-duration:6s;animation-delay:0.9s;">🌱</span>
-        <span class="leaf" style="left:23%;bottom:9%;animation-duration:9.5s;animation-delay:2.1s;">🌾</span>
-        <span class="leaf" style="left:71%;bottom:17%;animation-duration:7.5s;animation-delay:3.5s;">🌿</span>
-        <div class="splash-card">
-            <div class="splash-icon">🌾</div>
-            <div class="splash-title">AgriMind</div>
-            <div class="splash-tagline" id="splash-tagline">AI Farm Advisor</div>
-            <div class="splash-desc"><p id="splash-msg">Welcome! Your <strong>AI-powered agronomist</strong> is ready.<br>Ask anything — or upload a photo for instant diagnosis.</p></div>
-            <div class="progress-wrap"><div class="progress-track"><div class="progress-bar"></div></div><div class="progress-label" id="splash-loading-label">Loading knowledge base…</div></div>
-            <button class="splash-btn ripple-host" onclick="dismissSplash()"><span id="splash-btn-text">🚜 Start Farming Smarter</span></button>
-        </div>
+  <!-- Google Sign-in -->
+  <div id="google-signin" style="position:fixed; top:20px; right:20px; z-index:300;"></div>
+  
+  <header>
+    <div class="header-inner">
+      <div class="logo" onclick="showHome()"><div class="logo-icon">🌾</div><div><div class="logo-title">AgriMind</div><div class="logo-sub" id="logo-sub">AI Farm Advisor</div></div></div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <select class="crop-select" id="crop-select"></select>
+        <div class="lang-toggle"><button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button><button class="lang-btn" id="btn-bn" onclick="setLang('bn')">বাং</button></div>
+        <button onclick="toggleHistory()" style="background:var(--g1); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:white; padding:6px 12px;">📋</button>
+      </div>
     </div>
+  </header>
 
-    <header>
-        <div class="header-inner">
-            <div class="logo" onclick="showHome()">
-                <div class="logo-icon ripple-host">🌾</div>
-                <div><div class="logo-title">AgriMind</div><div class="logo-sub" id="logo-sub"></div></div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <select class="crop-select" id="crop-select"></select>
-                <div class="lang-toggle">
-                    <button class="lang-btn active ripple-host" id="btn-en" onclick="setLang('en')">EN</button>
-                    <button class="lang-btn ripple-host" id="btn-bn" onclick="setLang('bn')">বাং</button>
-                </div>
-            </div>
-        </div>
-    </header>
+  <div id="history-panel"><h3 style="color:var(--accent); margin-bottom:12px;">📜 Chat History</h3><div id="history-list"></div></div>
 
-    <main>
-        <div id="home-view">
-            <div class="hero-section">
-                <div class="hero-orb-ring"><div class="orb-glow"></div><div class="hero-orb" id="hero-orb">🌿</div></div>
-                <h1 class="hero-title" id="hero-title"></h1>
-                <p class="hero-sub" id="hero-sub"></p>
-                <button class="photo-cta ripple-host" onclick="document.getElementById('file-input').click()" id="photo-cta-btn"></button>
-            </div>
-            <div class="quick-grid" id="quick-grid"></div>
-            <div class="stats-row">
-                <div class="stat-box"><div class="stat-icon">🌍</div><div class="stat-val" id="sv1">50+</div><div class="stat-label" id="stat1"></div></div>
-                <div class="stat-box"><div class="stat-icon">🔬</div><div class="stat-val" id="sv2">200+</div><div class="stat-label" id="stat2"></div></div>
-                <div class="stat-box"><div class="stat-icon">📸</div><div class="stat-val" id="stat3val"></div><div class="stat-label" id="stat3"></div></div>
-                <div class="stat-box"><div class="stat-icon">⚡</div><div class="stat-val" id="stat4val"></div><div class="stat-label" id="stat4"></div></div>
-            </div>
-            <div class="dev-credit"><div class="dev-credit-inner"><span class="dev-credit-text">Developed by</span><div class="dev-dot"></div><span class="dev-credit-name">DIPTO BISWAS</span></div></div>
-        </div>
-        <div id="chat-view"><div id="messages"></div><div class="quick-strip" id="quick-strip"></div></div>
-    </main>
-
-    <footer>
-        <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleImagePick(event)" />
-        <div id="pending-image-bar" style="display:none">
-            <div class="pending-bar"><div class="pending-inner">
-                    <img id="pending-thumb" src="" alt="pending" class="pending-thumb" />
-                    <div class="pending-info"><span id="pending-name" class="pending-name"></span><span class="pending-hint-text" id="pending-hint"></span></div>
-                    <button class="remove-btn" onclick="removePendingImage()">✕</button>
-            </div></div>
-        </div>
-        <div class="input-row">
-            <button class="img-btn ripple-host" id="img-btn" onclick="document.getElementById('file-input').click()">📸</button>
-            <textarea id="chat-input" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-            <button class="send-btn ripple-host" id="send-btn" onclick="sendMessage()" disabled>➤</button>
-        </div>
-        <p class="disclaimer" id="disclaimer"></p>
-    </footer>
-
-    <!-- AI PET – SPROUT THE FARM BUDDY (press to react) -->
-    <div id="ai-pet" title="Sprout – your farm buddy! Click me!">
-        <div class="pet-speech-bubble" id="pet-bubble"></div>
-        <div class="pet-zzz">z</div>
-        <div class="pet-zzz">z</div>
-        <div class="pet-zzz">z</div>
-        <div class="pet-body-wrapper">
-            <div class="pet-shadow"></div>
-            <div class="pet-pot"></div>
-            <div class="pet-stem"></div>
-            <div class="pet-head">
-                <div class="pet-leaf pet-leaf-left"></div>
-                <div class="pet-leaf pet-leaf-right"></div>
-                <div class="pet-face">
-                    <div class="pet-eye pet-eye-left"><div class="pet-pupil"></div></div>
-                    <div class="pet-eye pet-eye-right"><div class="pet-pupil"></div></div>
-                    <div class="pet-mouth"></div>
-                </div>
-            </div>
-        </div>
+  <main>
+    <div id="home-view">
+      <div class="hero-section" style="text-align:center; padding:40px 20px;">
+        <div class="hero-orb-ring"><div class="hero-orb">🌿</div></div>
+        <h1 class="hero-title" id="hero-title">Smart Farming Starts Here</h1>
+        <p class="hero-sub" id="hero-sub" style="color:var(--text-dim);">Ask about crops, soil, pests — or <strong>upload a photo</strong> for AI diagnosis.</p>
+        <button class="photo-cta" onclick="document.getElementById('file-input').click()" style="background:rgba(74,222,128,0.1); border:1px solid var(--accent); padding:12px 28px; border-radius:50px; color:var(--accent);">📸 Upload Crop Photo</button>
+      </div>
+      <div class="quick-grid" id="quick-grid"></div>
+      <div class="stats-row">
+        <div class="stat-box"><span>🌍</span><div class="stat-val">50+</div><div>Crops</div></div>
+        <div class="stat-box"><span>🔬</span><div class="stat-val">200+</div><div>Diseases</div></div>
+        <div class="stat-box"><span>📸</span><div class="stat-val">Vision AI</div><div>Photo Scan</div></div>
+      </div>
     </div>
+    <div id="chat-view"><div id="messages"></div><div class="quick-strip" id="quick-strip"></div></div>
+  </main>
 
-    <script>
-        (function initCursor() {
-            const dot = document.getElementById('cursor-dot');
-            const ring = document.getElementById('cursor-ring');
-            const canvas = document.getElementById('cursor-trail-canvas');
-            const ctx = canvas.getContext('2d');
-            let mx = 0, my = 0, rx = 0, ry = 0;
-            const trail = [];
-            const MAX_TRAIL = 28;
-            function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-            resize();
-            window.addEventListener('resize', resize);
-            document.addEventListener('mousemove', e => {
-                mx = e.clientX;
-                my = e.clientY;
-                dot.style.left = mx + 'px';
-                dot.style.top = my + 'px';
-                trail.push({ x: mx, y: my, a: 1, r: 4 });
-                if (trail.length > MAX_TRAIL) trail.shift();
-            });
-            (function animRing() {
-                rx += (mx - rx) * 0.12;
-                ry += (my - ry) * 0.12;
-                ring.style.left = rx + 'px';
-                ring.style.top = ry + 'px';
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                for (let i = 0; i < trail.length; i++) {
-                    const t = trail[i];
-                    const p = i / trail.length;
-                    t.a = p * 0.55;
-                    t.r = 1 + p * 3.5;
-                    ctx.beginPath();
-                    ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(74,222,128,${t.a})`;
-                    ctx.fill();
-                }
-                requestAnimationFrame(animRing);
-            })();
-        })();
+  <footer>
+    <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleImagePick(event)" />
+    <div id="pending-image-bar" style="display:none"><div class="pending-bar" style="display:flex; align-items:center; gap:8px; background:rgba(74,222,128,0.1); border-radius:12px; padding:8px; margin-bottom:8px;"><img id="pending-thumb" style="width:40px; height:40px; border-radius:8px;"/><span id="pending-name"></span><button onclick="removePendingImage()">✕</button></div></div>
+    <div class="input-row">
+      <button class="img-btn" onclick="document.getElementById('file-input').click()">📸</button>
+      <textarea id="chat-input" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>➤</button>
+    </div>
+  </footer>
 
-        (function initBlob() {
-            const canvas = document.getElementById('blob-canvas');
-            const ctx = canvas.getContext('2d');
-            let W, H, t = 0;
-            function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-            resize();
-            window.addEventListener('resize', resize);
-            function blobPoint(cx, cy, r, angle, wobble, phase) {
-                const w = r + Math.sin(angle * wobble + t * 0.6 + phase) * r * 0.22 + Math.cos(angle * wobble * 1.3 + t * 0.4) * r * 0.12;
-                return { x: cx + Math.cos(angle) * w, y: cy + Math.sin(angle) * w };
-            }
-            function drawBlob(cx, cy, r, wobble, phase, col1, col2) {
-                const pts = 32;
-                const step = Math.PI * 2 / pts;
-                ctx.beginPath();
-                for (let i = 0; i <= pts; i++) {
-                    const a = i * step;
-                    const p = blobPoint(cx, cy, r, a, wobble, phase);
-                    i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-                }
-                ctx.closePath();
-                const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-                g.addColorStop(0, col1);
-                g.addColorStop(1, col2);
-                ctx.fillStyle = g;
-                ctx.fill();
-            }
-            (function anim() {
-                t += 0.008;
-                ctx.clearRect(0, 0, W, H);
-                drawBlob(W * 0.22, H * 0.25, Math.min(W, H) * 0.38, 3, 0, 'rgba(20,83,45,0.38)', 'transparent');
-                drawBlob(W * 0.78, H * 0.72, Math.min(W, H) * 0.32, 4, 2.1, 'rgba(10,45,25,0.3)', 'transparent');
-                drawBlob(W * 0.5, H * 0.5, Math.min(W, H) * 0.22, 5, 4.3, 'rgba(74,222,128,0.045)', 'transparent');
-                requestAnimationFrame(anim);
-            })();
-        })();
+  <div class="pets-container">
+    <!-- Sprout pet -->
+    <div id="ai-pet" title="Sprout">
+      <div class="pet-speech-bubble" id="pet-bubble"></div>
+      <div class="pet-body-wrapper"><div class="pet-shadow"></div><div class="pet-pot"></div><div class="pet-stem"></div><div class="pet-head"><div class="pet-leaf pet-leaf-left"></div><div class="pet-leaf pet-leaf-right"></div><div class="pet-face"><div class="pet-eye pet-eye-left"><div class="pet-pupil"></div></div><div class="pet-eye pet-eye-right"><div class="pet-pupil"></div></div><div class="pet-mouth"></div></div></div></div>
+    </div>
+    <!-- Mango Tree pet -->
+    <div id="mango-tree" title="Mango Buddy">
+      <div class="tree-speech" id="tree-bubble">🥭 Mango power!</div>
+      <div class="tree-body">
+        <div class="mango-canopy"></div>
+        <div class="mango-trunk"></div>
+        <div class="mango-fruit" style="top:10px; left:10px;"></div>
+        <div class="mango-fruit" style="top:20px; right:5px; width:12px; height:12px;"></div>
+        <div class="mango-fruit" style="top:5px; left:25px; width:16px; height:16px;"></div>
+      </div>
+    </div>
+  </div>
 
-        (function initParticles() {
-            const canvas = document.getElementById('particle-canvas');
-            const ctx = canvas.getContext('2d');
-            let W, H;
-            function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-            resize();
-            window.addEventListener('resize', resize);
-            const N = 60;
-            const particles = Array.from({ length: N }, () => ({
-                x: Math.random() * window.innerWidth,
-                y: Math.random() * window.innerHeight,
-                vx: (Math.random() - 0.5) * 0.25,
-                vy: -0.15 - Math.random() * 0.3,
-                r: 0.8 + Math.random() * 2.2,
-                a: Math.random() * 0.35 + 0.05,
-                life: Math.random(),
-                maxLife: 1
-            }));
-            (function anim() {
-                ctx.clearRect(0, 0, W, H);
-                particles.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.life -= 0.003;
-                    if (p.life <= 0 || p.y < -10) { p.x = Math.random() * W; p.y = H + 10; p.life = 1; p.vx = (Math.random() - 0.5) * 0.25; p.vy = -0.15 - Math.random() * 0.3; }
-                    const alpha = p.a * Math.sin(p.life * Math.PI);
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(74,222,128,${alpha})`;
-                    ctx.fill();
-                });
-                requestAnimationFrame(anim);
-            })();
-        })();
+  <script>
+    // Google API load
+    window.onload = () => {
+      const script = document.createElement('script');
+      script.src = "https://accounts.google.com/gsi/client";
+      script.onload = initGoogle;
+      document.head.appendChild(script);
+    };
 
-        (function initOrbTilt() {
-            const orb = document.getElementById('hero-orb');
-            if (!orb) return;
-            const wrap = orb.closest('.hero-orb-ring');
-            wrap.addEventListener('mousemove', e => {
-                const r = orb.getBoundingClientRect();
-                const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-                const dx = (e.clientX - cx) / 60, dy = (e.clientY - cy) / 60;
-                orb.style.transform = `translateY(${-12*Math.sin(Date.now()/2000)}px) rotateY(${dx*12}deg) rotateX(${-dy*12}deg) scale(1.06)`;
-            });
-            wrap.addEventListener('mouseleave', () => { orb.style.transform = ''; });
-        })();
+    let googleUser = null;
+    function initGoogle() {
+      google.accounts.id.initialize({
+        client_id: "1080624628570-5q1vq9vq9vq9vq9vq9vq9vq9vq9vq9.apps.googleusercontent.com", // demo
+        callback: handleGoogleResponse,
+        auto_select: false
+      });
+      google.accounts.id.renderButton(
+        document.getElementById("google-signin"),
+        { theme: "outline", size: "large", text: "signin_with", shape: "pill" }
+      );
+    }
+    function handleGoogleResponse(response) {
+      const payload = parseJwt(response.credential);
+      googleUser = { name: payload.name, email: payload.email, picture: payload.picture };
+      updateUIAfterLogin();
+    }
+    function parseJwt(token) {
+      const base64Url = token.split('.')[1];
+      return JSON.parse(atob(base64Url));
+    }
+    function updateUIAfterLogin() {
+      if (!googleUser) return;
+      document.getElementById('google-signin').innerHTML = `<div class="user-profile"><img src="${googleUser.picture}" class="avatar-img"/><span style="color:white; font-size:0.8rem;">${googleUser.name}</span></div>`;
+      loadChatHistory();
+    }
 
-        function initCardTilts() {
-            document.querySelectorAll('.quick-card').forEach(card => {
-                card.addEventListener('mousemove', e => {
-                    const r = card.getBoundingClientRect();
-                    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-                    const dx = (e.clientX - cx) / r.width, dy = (e.clientY - cy) / r.height;
-                    card.style.transform = `translateY(-8px) scale(1.04) rotateY(${dx*14}deg) rotateX(${-dy*14}deg)`;
-                    card.style.boxShadow = `${-dx*12}px ${-dy*12+20}px 56px rgba(0,0,0,0.48),0 0 0 1px rgba(74,222,128,0.18),0 1px 0 rgba(255,255,255,0.14) inset`;
-                });
-                card.addEventListener('mouseleave', () => { card.style.transform = ''; card.style.boxShadow = ''; });
-            });
-        }
+    // Chat history localStorage
+    function saveChatHistory() {
+      if (!googleUser) return;
+      localStorage.setItem(`agrimind_${googleUser.email}`, JSON.stringify(messages));
+    }
+    function loadChatHistory() {
+      if (!googleUser) return;
+      const saved = localStorage.getItem(`agrimind_${googleUser.email}`);
+      if (saved) {
+        messages = JSON.parse(saved);
+        renderHistoryPanel();
+      }
+    }
+    function toggleHistory() {
+      const panel = document.getElementById('history-panel');
+      panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+      renderHistoryPanel();
+    }
+    function renderHistoryPanel() {
+      const list = document.getElementById('history-list');
+      list.innerHTML = messages.slice(-20).map((m,i) => `<div class="history-item" onclick="loadSessionFromHistory(${i})">${m.role==='user'?'👤':'🌾'} ${(m.content||'').substring(0,40)}...</div>`).join('');
+    }
+    function loadSessionFromHistory(index) {
+      // just scroll to that message conceptually
+      showChat();
+    }
 
-        document.addEventListener('click', e => {
-            const host = e.target.closest('.ripple-host');
-            if (!host) return;
-            const r = host.getBoundingClientRect();
-            const size = Math.max(r.width, r.height) * 2;
-            const ripple = document.createElement('span');
-            ripple.className = 'ripple';
-            ripple.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-r.left-size/2}px;top:${e.clientY-r.top-size/2}px;`;
-            host.appendChild(ripple);
-            setTimeout(() => ripple.remove(), 700);
+    // Core variables
+    const GROQ_API_KEY = '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';
+    let lang = 'en', messages = [], loading = false, pendingImage = null;
+
+    const T = {
+      en: {
+        logoSub:'AI Farm Advisor', heroTitle:'Smart Farming Starts Here',
+        cards:[{icon:'🌿',label:'Crop Disease',msg:'My leaves have spots.'},{icon:'💧',label:'Irrigation',msg:'When to water?'}],
+        strips:[{icon:'🌿',label:'Disease',msg:'Leaf spots?'}],
+        systemPrompt:'You are AgriMind, expert agronomist. Answer in English.',
+        petFacts:['🌱 Soil microbes!','💧 Water wisely!']
+      },
+      bn: {
+        logoSub:'কৃষি AI', heroTitle:'স্মার্ট চাষাবাদ',
+        cards:[{icon:'🌿',label:'ফসলের রোগ',msg:'পাতায় দাগ'}],
+        strips:[{icon:'🌿',label:'রোগ',msg:'পাতার সমস্যা'}],
+        systemPrompt:'আপনি AgriMind, বাংলায় উত্তর দিন।',
+        petFacts:['🌱 মাটির স্বাস্থ্য','💧 পানি দিন']
+      }
+    };
+
+    function setLang(l) {
+      lang = l;
+      document.body.classList.toggle('bn', l==='bn');
+      document.getElementById('btn-en').classList.toggle('active', l==='en');
+      document.getElementById('btn-bn').classList.toggle('active', l==='bn');
+      renderUI();
+    }
+
+    function renderUI() {
+      const t = T[lang];
+      document.getElementById('logo-sub').textContent = t.logoSub;
+      document.getElementById('hero-title').textContent = t.heroTitle;
+      document.getElementById('quick-grid').innerHTML = t.cards.map(c=>`<button class="quick-card" onclick="sendMessage('${c.msg}')">${c.icon} ${c.label}</button>`).join('');
+      document.getElementById('quick-strip').innerHTML = t.strips.map(s=>`<button onclick="sendMessage('${s.msg}')">${s.icon} ${s.label}</button>`).join('');
+      document.getElementById('chat-input').placeholder = lang==='en'?'Ask about crops...':'ফসল নিয়ে জিজ্ঞেস করুন...';
+    }
+
+    function showHome() { document.getElementById('home-view').style.display='block'; document.getElementById('chat-view').classList.remove('active'); }
+    function showChat() { document.getElementById('home-view').style.display='none'; document.getElementById('chat-view').classList.add('active'); }
+
+    function handleImagePick(e) {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        pendingImage = { base64: ev.target.result.split(',')[1], mediaType: file.type, preview: ev.target.result, name: file.name };
+        document.getElementById('pending-thumb').src = ev.target.result;
+        document.getElementById('pending-name').textContent = file.name;
+        document.getElementById('pending-image-bar').style.display = 'block';
+        updateSendBtn();
+      };
+      reader.readAsDataURL(file);
+    }
+    function removePendingImage() { pendingImage=null; document.getElementById('pending-image-bar').style.display='none'; updateSendBtn(); }
+    function updateSendBtn() { document.getElementById('send-btn').disabled = loading || (!document.getElementById('chat-input').value.trim() && !pendingImage); }
+    function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; updateSendBtn(); }
+    function handleKey(e) { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+    async function sendMessage(textOverride) {
+      const input = document.getElementById('chat-input');
+      const msg = (textOverride || input.value).trim();
+      if(!msg && !pendingImage) return;
+      if(loading) return;
+      loading = true; updateSendBtn();
+      const image = pendingImage;
+      input.value = ''; removePendingImage();
+      showChat();
+      messages.push({role:'user', content:msg, image:image});
+      appendMessage('user', msg, image);
+      appendTyping();
+      try {
+        const reply = await callAI(msg, image);
+        removeTyping();
+        messages.push({role:'assistant', content:reply});
+        appendMessage('assistant', reply);
+        if(googleUser) saveChatHistory();
+        mangoTreeCelebrate();
+      } catch(e) {
+        removeTyping();
+        appendMessage('assistant', '⚠️ Error. Try again.');
+      }
+      loading = false; updateSendBtn();
+    }
+
+    function appendMessage(role, content, img) {
+      const container = document.getElementById('messages');
+      const wrap = document.createElement('div'); wrap.className='message-wrap '+(role==='user'?'user-wrap':'ai-wrap');
+      const bubble = document.createElement('div'); bubble.className = role==='user'?'user-bubble':'ai-bubble';
+      if(img) { const imageEl = document.createElement('img'); imageEl.src=img.preview; imageEl.style.maxWidth='200px'; bubble.appendChild(imageEl); }
+      if(content) bubble.innerHTML += content.replace(/\n/g,'<br>');
+      wrap.appendChild(bubble);
+      container.appendChild(wrap);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function appendTyping() {
+      const container = document.getElementById('messages');
+      const wrap = document.createElement('div'); wrap.className='message-wrap ai-wrap'; wrap.id='typing';
+      wrap.innerHTML = '<div class="ai-bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+      container.appendChild(wrap);
+    }
+    function removeTyping() { const el = document.getElementById('typing'); if(el) el.remove(); }
+
+    async function callAI(msg, img) {
+      const crop = document.getElementById('crop-select').value;
+      const history = messages.map(m => ({role:m.role, content:m.content}));
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${GROQ_API_KEY}`},
+        body:JSON.stringify({model:'llama-3.3-70b-versatile', messages:[{role:'system',content:T[lang].systemPrompt}, ...history]})
+      });
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    // Mango tree pet interactions
+    function mangoTreeCelebrate() {
+      const bubble = document.getElementById('tree-bubble');
+      bubble.textContent = ['🥭 Sweet!','🌳 Healthy!','🍃 Growing!','💚 Good job!'][Math.floor(Math.random()*4)];
+      bubble.classList.add('show');
+      setTimeout(() => bubble.classList.remove('show'), 2000);
+    }
+
+    document.getElementById('chat-input').addEventListener('input', updateSendBtn);
+    renderUI();
+
+    // Cursor trail
+    (function() {
+      const canvas = document.getElementById('cursor-trail-canvas'), ctx = canvas.getContext('2d');
+      let trail = [];
+      function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+      resize(); window.addEventListener('resize', resize);
+      document.addEventListener('mousemove', e => {
+        trail.push({x:e.clientX, y:e.clientY, a:1});
+        if(trail.length>20) trail.shift();
+      });
+      function anim() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        trail.forEach((p,i) => {
+          p.a *= 0.92;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+          ctx.fillStyle = `rgba(74,222,128,${p.a})`;
+          ctx.fill();
         });
-
-        function splitTextAnimate(el) {
-            const text = el.textContent;
-            el.innerHTML = '';
-            el.classList.add('split-text');
-            el.classList.remove('bn-fade');
-            [...text].forEach((ch, i) => {
-                const span = document.createElement('span');
-                span.className = 'char';
-                span.textContent = ch === ' ' ? '\u00a0' : ch;
-                span.style.animationDelay = (0.5 + i * 0.045) + 's';
-                el.appendChild(span);
-            });
-        }
-
-        function bnTitleAnimate(el, text) {
-            el.classList.remove('split-text');
-            el.innerHTML = '';
-            el.textContent = text;
-            el.classList.add('bn-fade');
-        }
-
-        function initScrollReveal() {
-            const obs = new IntersectionObserver((entries) => {
-                entries.forEach(en => { if (en.isIntersecting) { en.target.style.opacity = '1'; en.target.style.transform = 'translateY(0)'; } });
-            }, { threshold: 0.15 });
-            document.querySelectorAll('.stat-box,.dev-credit-inner').forEach(el => { obs.observe(el); });
-        }
-
-        (function initSplashParticles() {
-            const canvas = document.getElementById('splash-particle-canvas');
-            const ctx = canvas.getContext('2d');
-            let W, H;
-            function resize() { W = canvas.width = canvas.parentElement.offsetWidth || window.innerWidth; H = canvas.height = canvas.parentElement.offsetHeight || window.innerHeight; }
-            resize();
-            window.addEventListener('resize', resize);
-            const pts = Array.from({ length: 50 }, () => ({ x: Math.random() * window.innerWidth, y: window.innerHeight + Math.random() * window.innerHeight, vx: (Math.random() - 0.5) * 0.4, vy: -0.4 - Math.random() * 0.8, r: 1 + Math.random() * 3, a: Math.random() * 0.5 + 0.1 }));
-            (function anim() {
-                ctx.clearRect(0, 0, W, H);
-                pts.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; }
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(74,222,128,${p.a})`;
-                    ctx.fill();
-                });
-                if (!document.getElementById('welcome-splash').classList.contains('hide')) requestAnimationFrame(anim);
-            })();
-        })();
-
-        const T = {
-            en: {
-                logoSub: 'AI Farm Advisor',
-                heroTitle: 'Smart Farming Starts Here',
-                heroSub: 'Ask anything about your crops, soil, pests, or harvest — or <strong>upload a photo</strong> for instant AI diagnosis.',
-                photoCta: '📸 Upload Crop Photo for Diagnosis',
-                stat1: 'Crops Covered', stat2: 'Diseases Known', stat3val: 'Vision', stat3: 'AI Photo Scan', stat4val: 'Instant', stat4: 'AI Response',
-                disclaimer: 'AgriMind provides guidance — consult a local agronomist for critical decisions.',
-                placeholder: 'Ask about your crops, soil, pests, weather, or harvesting…',
-                placeholderPhoto: 'Describe the issue or send photo alone…',
-                pendingHint: 'Photo ready — add a message or send for instant diagnosis',
-                errorMsg: 'Connection error. Please check your network and try again.',
-                cropOptions: ['🌱 Select your crop', 'Maize / Corn', 'Rice', 'Wheat', 'Tomatoes', 'Cassava', 'Soybeans', 'Cotton', 'Sugarcane', 'Potatoes', 'Other'],
-                cards: [
-                    { icon: '🌿', label: 'Crop Disease', msg: "My crop leaves are turning yellow with brown spots. What could be wrong and how do I treat it?" },
-                    { icon: '💧', label: 'Irrigation', msg: "How do I know when my crops need watering? What's the best irrigation schedule?" },
-                    { icon: '🌱', label: 'Soil Health', msg: "How can I improve my soil fertility naturally without expensive fertilizers?" },
-                    { icon: '🐛', label: 'Pest Control', msg: "I'm seeing insects damaging my crops. How do I identify and control them organically?" },
-                    { icon: '🌾', label: 'Planting Guide', msg: "What should I plant this season and how do I rotate my crops effectively?" },
-                    { icon: '📦', label: 'Post-Harvest', msg: "How do I properly store my harvest to maximize shelf life and reduce losses?" }
-                ],
-                strips: [
-                    { icon: '🌿', label: 'Crop Disease', msg: "My crop leaves are turning yellow with brown spots. What could be wrong?" },
-                    { icon: '💧', label: 'Irrigation', msg: "How do I know when my crops need watering?" },
-                    { icon: '🌱', label: 'Soil Health', msg: "How can I improve my soil fertility naturally?" },
-                    { icon: '🐛', label: 'Pest Control', msg: "I'm seeing insects damaging my crops. How do I control them organically?" }
-                ],
-                systemPrompt: `You are AgriMind, an expert AI agronomist. Answer in English. You have deep knowledge of crop diseases, pests, soil health, irrigation, planting, organic farming, and post-harvest storage. When given an image, analyze it for disease symptoms, pest damage, nutrient deficiencies, and plant health. Be practical, specific, and actionable.`,
-                petFacts: ['🌱 Healthy soil has billions of microorganisms!','💧 Overwatering can harm as much as drought!','🐛 Ladybugs eat up to 50 aphids a day!','🌾 Rotate crops to keep soil rich!','🌿 Some plants naturally repel pests!','☀️ Morning is the best time to water!','🦋 Bees pollinate 70% of food crops!','🌍 Earthworms improve soil naturally!','🍅 Tomatoes love basil as a neighbor!','🌽 Corn grows best in blocks, not rows!','🥕 Carrots need loose, sandy soil!','💚 Compost is free fertilizer!']
-            },
-            bn: {
-                logoSub: 'কৃষি AI পরামর্শদাতা',
-                heroTitle: 'স্মার্ট চাষাবাদ এখন সহজ',
-                heroSub: 'আপনার ফসল, মাটি, পোকামাকড় বা ফসল তোলা নিয়ে যেকোনো প্রশ্ন করুন — অথবা <strong>ছবি আপলোড করুন</strong> তাৎক্ষণিক AI রোগ নির্ণয়ের জন্য।',
-                photoCta: '📸 ফসলের ছবি আপলোড করুন',
-                stat1: 'ফসলের তথ্য', stat2: 'রোগ চেনা যায়', stat3val: 'ভিশন', stat3: 'AI ছবি বিশ্লেষণ', stat4val: 'তাৎক্ষণিক', stat4: 'AI উত্তর',
-                disclaimer: 'AgriMind পরামর্শ দেয় — গুরুত্বপূর্ণ সিদ্ধান্তে স্থানীয় কৃষিবিদের সাথে পরামর্শ করুন।',
-                placeholder: 'আপনার ফসল, মাটি, পোকামাকড়, আবহাওয়া বা ফসল তোলা নিয়ে জিজ্ঞেস করুন…',
-                placeholderPhoto: 'সমস্যা বর্ণনা করুন অথবা শুধু ছবি পাঠান…',
-                pendingHint: 'ছবি প্রস্তুত — বার্তা যোগ করুন বা সরাসরি পাঠান',
-                errorMsg: 'সংযোগ ত্রুটি। আপনার নেটওয়ার্ক চেক করে আবার চেষ্টা করুন।',
-                cropOptions: ['🌱 আপনার ফসল বেছে নিন', 'ভুট্টা', 'ধান', 'গম', 'টমেটো', 'কাসাভা', 'সয়াবিন', 'তুলা', 'আখ', 'আলু', 'অন্যান্য'],
-                cards: [
-                    { icon: '🌿', label: 'ফসলের রোগ', msg: "আমার ফসলের পাতা হলুদ হয়ে বাদামি দাগ পড়ছে। কী সমস্যা হতে পারে এবং কীভাবে সমাধান করব?" },
-                    { icon: '💧', label: 'সেচ ব্যবস্থা', msg: "আমার ফসলে কখন পানি দিতে হবে কীভাবে বুঝব? সেচের সেরা সময়সূচি কী?" },
-                    { icon: '🌱', label: 'মাটির স্বাস্থ্য', msg: "দামি সার ছাড়া প্রাকৃতিকভাবে মাটির উর্বরতা কীভাবে বাড়ানো যায়?" },
-                    { icon: '🐛', label: 'পোকা দমন', msg: "পোকামাকড় আমার ফসলের ক্ষতি করছে। জৈব উপায়ে কীভাবে চিহ্নিত করব ও দমন করব?" },
-                    { icon: '🌾', label: 'রোপণ গাইড', msg: "এই মৌসুমে কী লাগাব এবং কীভাবে ফসল পরিবর্তন করলে ভালো হবে?" },
-                    { icon: '📦', label: 'ফসল সংরক্ষণ', msg: "ফসলের আয়ু বাড়াতে এবং ক্ষতি কমাতে কীভাবে সংরক্ষণ করব?" }
-                ],
-                strips: [
-                    { icon: '🌿', label: 'ফসলের রোগ', msg: "আমার ফসলের পাতা হলুদ হয়ে বাদামি দাগ পড়ছে। কী সমস্যা?" },
-                    { icon: '💧', label: 'সেচ', msg: "ফসলে কখন পানি দিতে হবে কীভাবে বুঝব?" },
-                    { icon: '🌱', label: 'মাটির স্বাস্থ্য', msg: "প্রাকৃতিকভাবে মাটির উর্বরতা কীভাবে বাড়ানো যায়?" },
-                    { icon: '🐛', label: 'পোকা দমন', msg: "পোকামাকড় ফসলের ক্ষতি করছে। জৈব উপায়ে কীভাবে দমন করব?" }
-                ],
-                systemPrompt: `আপনি AgriMind, একজন বিশেষজ্ঞ AI কৃষিবিদ। সবসময় বাংলায় উত্তর দিন। আপনার ফসলের রোগ, পোকামাকড়, মাটির স্বাস্থ্য, সেচ, রোপণ, জৈব চাষ এবং ফসল সংরক্ষণ সম্পর্কে গভীর জ্ঞান রয়েছে। ছবি দিলে রোগের লক্ষণ, পোকার ক্ষতি, পুষ্টির ঘাটতি বিশ্লেষণ করুন। ব্যবহারিক, নির্দিষ্ট এবং কার্যকর পরামর্শ দিন।`,
-                petFacts: ['🌱 সুস্থ মাটিতে কোটি কোটি অণুজীব থাকে!','💧 অতিরিক্ত পানি দেওয়াও ক্ষতিকর হতে পারে!','🐛 লেডিবাগ প্রতিদিন ৫০টি এফিড খায়!','🌾 ফসল পরিবর্তন করলে মাটি ভালো থাকে!','🌿 কিছু গাছ প্রাকৃতিকভাবে পোকা তাড়ায়!','☀️ সকালে পানি দেওয়া সবচেয়ে ভালো!','🦋 মৌমাছি ৭০% খাদ্যশস্যের পরাগায়ন করে!','🌍 কেঁচো প্রাকৃতিকভাবে মাটি উন্নত করে!','🍅 টমেটোর পাশে তুলসী ভালো জন্মায়!','🌽 ভুট্টা সারি করে না, ব্লকে লাগানো ভালো!','💚 কম্পোস্ট হলো বিনামূল্যের সার!']
-            }
-        };
-
-        const GROQ_API_KEY = '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';
-        let lang = 'en', messages = [], loading = false, pendingImage = null;
-
-        function setLang(l) {
-            lang = l;
-            document.body.classList.toggle('bn', l === 'bn');
-            document.getElementById('btn-en').classList.toggle('active', l === 'en');
-            document.getElementById('btn-bn').classList.toggle('active', l === 'bn');
-            renderUI();
-            updatePetBubble(true);
-        }
-
-        function renderUI() {
-            const t = T[lang];
-            document.getElementById('logo-sub').textContent = t.logoSub;
-            const titleEl = document.getElementById('hero-title');
-            if (lang === 'en') {
-                titleEl.textContent = t.heroTitle;
-                splitTextAnimate(titleEl);
-            } else {
-                bnTitleAnimate(titleEl, t.heroTitle);
-            }
-            document.getElementById('hero-sub').innerHTML = t.heroSub;
-            document.getElementById('photo-cta-btn').textContent = t.photoCta;
-            document.getElementById('stat1').textContent = t.stat1;
-            document.getElementById('stat2').textContent = t.stat2;
-            document.getElementById('stat3val').textContent = t.stat3val;
-            document.getElementById('stat3').textContent = t.stat3;
-            document.getElementById('stat4val').textContent = t.stat4val;
-            document.getElementById('stat4').textContent = t.stat4;
-            document.getElementById('disclaimer').textContent = t.disclaimer;
-            document.getElementById('pending-hint').textContent = t.pendingHint;
-            document.getElementById('chat-input').placeholder = pendingImage ? t.placeholderPhoto : t.placeholder;
-            const sel = document.getElementById('crop-select');
-            const prev = sel.value;
-            sel.innerHTML = t.cropOptions.map((o, i) => `<option value="${i===0?'':o}">${o}</option>`).join('');
-            sel.value = prev;
-            document.getElementById('quick-grid').innerHTML = t.cards.map(c =>
-                `<button class="quick-card ripple-host" onclick="sendMessage(${JSON.stringify(c.msg)})"><span class="quick-icon">${c.icon}</span><span class="quick-label">${c.label}</span></button>`).join('');
-            document.getElementById('quick-strip').innerHTML = t.strips.map(s =>
-                `<button class="strip-btn ripple-host" onclick="sendMessage(${JSON.stringify(s.msg)})">${s.icon} ${s.label}</button>`).join('');
-            setTimeout(() => { initCardTilts(); initScrollReveal(); }, 100);
-        }
-
-        function showHome() { document.getElementById('home-view').style.display = 'block'; document.getElementById('chat-view').classList.remove('active'); }
-        function showChat() { document.getElementById('home-view').style.display = 'none'; document.getElementById('chat-view').classList.add('active'); }
-
-        function handleImagePick(e) {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const mediaType = file.type || 'image/jpeg';
-            const reader = new FileReader();
-            reader.onload = ev => {
-                const dataUrl = ev.target.result;
-                pendingImage = { base64: dataUrl.split(',')[1], mediaType, preview: dataUrl, name: file.name };
-                document.getElementById('pending-thumb').src = dataUrl;
-                document.getElementById('pending-name').textContent = '📸 ' + file.name;
-                document.getElementById('pending-image-bar').style.display = 'block';
-                document.getElementById('img-btn').classList.add('has-image');
-                document.getElementById('chat-input').placeholder = T[lang].placeholderPhoto;
-                updateSendBtn();
-            };
-            reader.readAsDataURL(file);
-            e.target.value = '';
-        }
-
-        function removePendingImage() {
-            pendingImage = null;
-            document.getElementById('pending-image-bar').style.display = 'none';
-            document.getElementById('img-btn').classList.remove('has-image');
-            document.getElementById('chat-input').placeholder = T[lang].placeholder;
-            updateSendBtn();
-        }
-
-        function updateSendBtn() {
-            const input = document.getElementById('chat-input').value.trim();
-            document.getElementById('send-btn').disabled = loading || (!input && !pendingImage);
-        }
-
-        function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; updateSendBtn(); }
-        function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
-
-        function formatMsg(text) {
-            return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/^#{1,3}\s(.+)$/gm, "<span class='msg-heading'>$1</span>").replace(/^[-•]\s(.+)$/gm, "<span class='msg-bullet'>• $1</span>").replace(/\n/g, '<br/>');
-        }
-
-        function appendMessage(role, content, imageData) {
-            const container = document.getElementById('messages');
-            const wrap = document.createElement('div');
-            wrap.className = 'message-wrap ' + (role === 'user' ? 'user-wrap' : 'ai-wrap');
-            wrap.style.justifyContent = role === 'user' ? 'flex-end' : 'flex-start';
-            if (role === 'assistant') { const av = document.createElement('div'); av.className = 'avatar'; av.textContent = '🌾'; wrap.appendChild(av); }
-            const bubble = document.createElement('div');
-            bubble.className = role === 'user' ? 'user-bubble' : 'ai-bubble';
-            if (role === 'user') {
-                if (imageData) { const img = document.createElement('img'); img.src = imageData.preview; img.className = 'msg-image'; bubble.appendChild(img); }
-                if (content) { const t = document.createElement('div'); t.textContent = content; bubble.appendChild(t); }
-            } else { bubble.innerHTML = formatMsg(content); }
-            wrap.appendChild(bubble);
-            if (role === 'user') { const av = document.createElement('div'); av.className = 'avatar-user'; av.textContent = '👤'; wrap.appendChild(av); }
-            container.appendChild(wrap);
-            container.scrollTop = container.scrollHeight;
-            return bubble;
-        }
-
-        function appendTypingIndicator() {
-            const container = document.getElementById('messages');
-            const wrap = document.createElement('div');
-            wrap.className = 'message-wrap ai-wrap';
-            wrap.id = 'typing-indicator';
-            wrap.style.justifyContent = 'flex-start';
-            const av = document.createElement('div'); av.className = 'avatar'; av.textContent = '🌾'; wrap.appendChild(av);
-            const bubble = document.createElement('div');
-            bubble.className = 'ai-bubble';
-            bubble.innerHTML = '<div class="typing-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
-            wrap.appendChild(bubble);
-            container.appendChild(wrap);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function removeTypingIndicator() { const el = document.getElementById('typing-indicator'); if (el) el.remove(); }
-
-        function buildApiHistory() {
-            return messages.map(m => {
-                if (m.role === 'user' && m.image) {
-                    return { role: 'user', content: [{ type: 'text', text: m.content || (lang === 'bn' ? 'এই ফসলের ছবিটি বিশ্লেষণ করুন।' : 'Please analyze this image of my crop.') }, { type: 'image_url', image_url: { url: `data:${m.image.mediaType};base64,${m.image.base64}` } }] };
-                }
-                return { role: m.role, content: m.content };
-            });
-        }
-
-        async function callAI(userMessage, image) {
-            const crop = document.getElementById('crop-select').value;
-            const cropNote = crop ? (lang === 'bn' ? `[কৃষকের প্রধান ফসল: ${crop}]\n\n` : `[Farmer's primary crop: ${crop}]\n\n`) : '';
-            const fallbackMsg = image ? (lang === 'bn' ? 'এই ফসলের ছবিটি বিশ্লেষণ করুন।' : 'Please analyze this image of my crop and tell me what you see.') : '';
-            const text = cropNote + (userMessage || fallbackMsg);
-            const history = buildApiHistory();
-            const lastMsg = history[history.length - 1];
-            if (image) { lastMsg.content = [{ type: 'text', text }, { type: 'image_url', image_url: { url: `data:${image.mediaType};base64,${image.base64}` } }]; } else { lastMsg.content = text; }
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-                body: JSON.stringify({ model: image ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.3-70b-versatile', max_tokens: 1000, messages: [{ role: 'system', content: T[lang].systemPrompt }, ...history] })
-            });
-            if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error?.message || `HTTP ${res.status}`); }
-            const data = await res.json();
-            return data.choices?.[0]?.message?.content || (lang === 'bn' ? 'দুঃখিত, উত্তর পাওয়া যায়নি।' : 'Sorry, I could not get a response.');
-        }
-
-        async function sendMessage(textOverride) {
-            const inputEl = document.getElementById('chat-input');
-            const msg = (textOverride !== undefined ? textOverride : inputEl.value).trim();
-            const image = pendingImage;
-            if (!msg && !image) return;
-            if (loading) return;
-            const btn = document.getElementById('send-btn');
-            btn.classList.add('send-flash');
-            setTimeout(() => btn.classList.remove('send-flash'), 400);
-            loading = true;
-            inputEl.value = '';
-            inputEl.style.height = '';
-            removePendingImage();
-            updateSendBtn();
-            showChat();
-            messages.push({ role: 'user', content: msg || '', image: image || null });
-            appendMessage('user', msg, image);
-            appendTypingIndicator();
-            petCelebrate();
-            try {
-                const reply = await callAI(msg, image);
-                removeTypingIndicator();
-                messages.push({ role: 'assistant', content: reply });
-                const container = document.getElementById('messages');
-                const wrap = document.createElement('div');
-                wrap.className = 'message-wrap ai-wrap';
-                wrap.style.justifyContent = 'flex-start';
-                const av = document.createElement('div'); av.className = 'avatar'; av.textContent = '🌾'; wrap.appendChild(av);
-                const bubble = document.createElement('div');
-                bubble.className = 'ai-bubble';
-                wrap.appendChild(bubble);
-                container.appendChild(wrap);
-                container.scrollTop = container.scrollHeight;
-                let i = 0;
-                const interval = setInterval(() => {
-                    i++;
-                    bubble.innerHTML = formatMsg(reply.slice(0, i)) + '<span class="cursor-blink">|</span>';
-                    container.scrollTop = container.scrollHeight;
-                    if (i >= reply.length) { clearInterval(interval); bubble.innerHTML = formatMsg(reply); container.scrollTop = container.scrollHeight; loading = false; updateSendBtn(); petCelebrate(); }
-                }, 8);
-            } catch (err) {
-                removeTypingIndicator();
-                messages.pop();
-                appendMessage('assistant', `⚠️ ${T[lang].errorMsg}`);
-                loading = false;
-                updateSendBtn();
-            }
-        }
-
-        document.getElementById('chat-input').addEventListener('input', updateSendBtn);
-
-        (function initSplash() {
-            function updateSplashLang() {
-                if (lang === 'bn') {
-                    document.getElementById('splash-tagline').textContent = 'কৃষি AI পরামর্শদাতা';
-                    document.getElementById('splash-msg').innerHTML = 'স্বাগতম! আপনার <strong>AI কৃষি বিশেষজ্ঞ</strong> প্রস্তুত।<br>যেকোনো প্রশ্ন করুন — বা ছবি পাঠান।';
-                    document.getElementById('splash-loading-label').textContent = 'জ্ঞানভাণ্ডার লোড হচ্ছে…';
-                    document.getElementById('splash-btn-text').textContent = '🚜 চাষ শুরু করুন';
-                    document.getElementById('splash-pill-text').textContent = 'AgriMind প্রস্তুত';
-                } else {
-                    document.getElementById('splash-tagline').textContent = 'AI Farm Advisor';
-                    document.getElementById('splash-msg').innerHTML = 'Welcome! Your <strong>AI-powered agronomist</strong> is ready.<br>Ask anything — or upload a photo for instant diagnosis.';
-                    document.getElementById('splash-loading-label').textContent = 'Loading knowledge base…';
-                    document.getElementById('splash-btn-text').textContent = '🚜 Start Farming Smarter';
-                    document.getElementById('splash-pill-text').textContent = 'AgriMind is ready';
-                }
-            }
-            const _orig = window.setLang;
-            window.setLang = function(l) { _orig(l); updateSplashLang(); };
-            setTimeout(() => dismissSplash(), 4400);
-        })();
-
-        function dismissSplash() {
-            const splash = document.getElementById('welcome-splash');
-            if (!splash || splash.classList.contains('hide')) return;
-            splash.classList.add('hide');
-            setTimeout(() => { splash.style.display = 'none'; petAppear(); }, 800);
-        }
-
-        /* ═══════════════════════════════════════════════════════════════════
-           AI PET – SPROUT THE FARM BUDDY (autonomous walking + press reaction)
-        ═══════════════════════════════════════════════════════════════════ */
-        const petEl = document.getElementById('ai-pet');
-        const petBubble = document.getElementById('pet-bubble');
-        const petPupils = petEl.querySelectorAll('.pet-pupil');
-        let petBubbleTimeout = null;
-        let petFactInterval = null;
-        let isPetDragging = false;
-        let petDragStartX = 0, petDragStartY = 0;
-        let petOrigRight = 22, petOrigBottom = 130;
-        let petIsMinimized = false;
-        let petSleepMode = false;
-        let inactivityTimer = null;
-        const INACTIVITY_SLEEP = 45000;
-
-        let walkAnimationId = null;
-        let walkTargetX = null, walkTargetY = null;
-        let walkStartX = null, walkStartY = null;
-        let walkStartTime = 0;
-        const WALK_DURATION = 2500 + Math.random() * 2000;
-        let walkInterval = null;
-        const WALK_RESTART_DELAY = 4000 + Math.random() * 6000;
-
-        function updatePetPosition() {
-            petEl.style.right = petOrigRight + 'px';
-            petEl.style.bottom = petOrigBottom + 'px';
-            petEl.style.left = 'auto';
-            petEl.style.top = 'auto';
-        }
-
-        function startWalking() {
-            if (petSleepMode || isPetDragging) return;
-            if (walkAnimationId) cancelAnimationFrame(walkAnimationId);
-            if (walkInterval) clearTimeout(walkInterval);
-            const petRect = petEl.getBoundingClientRect();
-            const petWidth = petRect.width;
-            const petHeight = petRect.height;
-            const maxRight = window.innerWidth - petWidth - 10;
-            const maxBottom = window.innerHeight - petHeight - 120;
-            walkTargetX = 10 + Math.random() * (maxRight - 10);
-            walkTargetY = 10 + Math.random() * (maxBottom - 10);
-            walkStartX = petOrigRight;
-            walkStartY = petOrigBottom;
-            walkStartTime = performance.now();
-            petEl.classList.add('walking');
-            walkAnimationId = requestAnimationFrame(stepWalk);
-        }
-
-        function stepWalk(timestamp) {
-            if (isPetDragging || petSleepMode) { stopWalking(); return; }
-            const elapsed = timestamp - walkStartTime;
-            const duration = WALK_DURATION;
-            let progress = Math.min(elapsed / duration, 1.0);
-            const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-            petOrigRight = walkStartX + (walkTargetX - walkStartX) * ease;
-            petOrigBottom = walkStartY + (walkTargetY - walkStartY) * ease;
-            updatePetPosition();
-            if (progress < 1.0) {
-                walkAnimationId = requestAnimationFrame(stepWalk);
-            } else {
-                stopWalking();
-                walkInterval = setTimeout(startWalking, WALK_RESTART_DELAY);
-            }
-        }
-
-        function stopWalking() {
-            if (walkAnimationId) { cancelAnimationFrame(walkAnimationId); walkAnimationId = null; }
-            petEl.classList.remove('walking');
-            if (walkInterval) { clearTimeout(walkInterval); walkInterval = null; }
-        }
-
-        function resetInactivityTimer() {
-            if (inactivityTimer) clearTimeout(inactivityTimer);
-            if (petSleepMode) wakePet();
-            inactivityTimer = setTimeout(() => { enterSleepMode(); }, INACTIVITY_SLEEP);
-            if (!petSleepMode && !isPetDragging) {
-                stopWalking();
-                setTimeout(() => { if (!petSleepMode && !isPetDragging) startWalking(); }, 2000 + Math.random() * 4000);
-            }
-        }
-
-        function petAppear() {
-            petEl.style.opacity = '0';
-            petEl.style.transform = 'translateY(40px) scale(0.6)';
-            petEl.style.transition = 'opacity 0.6s var(--ease-out), transform 0.7s var(--spring)';
-            requestAnimationFrame(() => { petEl.style.opacity = '1'; petEl.style.transform = 'translateY(0) scale(1)'; });
-            setTimeout(() => { petEl.style.transition = 'transform 0.4s var(--spring)'; startPetIdleFacts(); resetInactivityTimer(); }, 700);
-            updatePetPosition();
-            const zzzEls = petEl.querySelectorAll('.pet-zzz');
-            zzzEls.forEach(z => z.style.display = 'none');
-            petSleepMode = false; petIsMinimized = false; petEl.classList.remove('minimized');
-        }
-
-        function startPetIdleFacts() {
-            if (petFactInterval) clearInterval(petFactInterval);
-            showPetBubble(getRandomFact(), 4000);
-            petFactInterval = setInterval(() => { if (!petSleepMode && !petIsMinimized) showPetBubble(getRandomFact(), 4500); }, 18000 + Math.random() * 14000);
-        }
-
-        function getRandomFact() { return T[lang].petFacts[Math.floor(Math.random() * T[lang].petFacts.length)]; }
-
-        function showPetBubble(text, duration = 3500) {
-            if (petBubbleTimeout) clearTimeout(petBubbleTimeout);
-            petBubble.textContent = text;
-            petBubble.classList.add('show');
-            petBubbleTimeout = setTimeout(() => { petBubble.classList.remove('show'); petBubbleTimeout = null; }, duration);
-        }
-
-        function updatePetBubble(immediate = false) {
-            if (immediate && petBubbleTimeout) { clearTimeout(petBubbleTimeout); petBubble.classList.remove('show'); petBubbleTimeout = null; setTimeout(() => showPetBubble(getRandomFact(), 4000), 600); }
-        }
-
-        function petCelebrate() {
-            if (petSleepMode) wakePet();
-            petEl.classList.add('happy');
-            spawnSparkles();
-            setTimeout(() => petEl.classList.remove('happy'), 600);
-            resetInactivityTimer();
-        }
-
-        function spawnSparkles() {
-            const emojis = ['✨', '💚', '🌟', '💫', '⭐', '🍀'];
-            const petRect = petEl.getBoundingClientRect();
-            const cx = petRect.left + petRect.width / 2;
-            const cy = petRect.top + petRect.height / 3;
-            for (let i = 0; i < 8; i++) {
-                const sparkle = document.createElement('span');
-                sparkle.className = 'pet-sparkle';
-                sparkle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-                sparkle.style.position = 'fixed';
-                sparkle.style.left = cx + 'px';
-                sparkle.style.top = cy + 'px';
-                sparkle.style.setProperty('--sx', (Math.random() - 0.5) * 80 + 'px');
-                sparkle.style.setProperty('--sy', -(Math.random() * 60 + 20) + 'px');
-                sparkle.style.zIndex = '55';
-                sparkle.style.pointerEvents = 'none';
-                sparkle.style.fontSize = (0.6 + Math.random() * 0.8) + 'rem';
-                document.body.appendChild(sparkle);
-                setTimeout(() => sparkle.remove(), 850);
-            }
-        }
-
-        function enterSleepMode() {
-            if (petSleepMode || petIsMinimized) return;
-            petSleepMode = true; petIsMinimized = true; petEl.classList.add('minimized');
-            const zzzEls = petEl.querySelectorAll('.pet-zzz'); zzzEls.forEach(z => z.style.display = 'block');
-            stopWalking();
-            if (petFactInterval) clearInterval(petFactInterval);
-            if (petBubbleTimeout) { clearTimeout(petBubbleTimeout); petBubble.classList.remove('show'); petBubbleTimeout = null; }
-        }
-
-        function wakePet() {
-            petSleepMode = false; petIsMinimized = false; petEl.classList.remove('minimized');
-            const zzzEls = petEl.querySelectorAll('.pet-zzz'); zzzEls.forEach(z => z.style.display = 'none');
-            petEl.classList.add('surprised');
-            setTimeout(() => petEl.classList.remove('surprised'), 400);
-            showPetBubble(lang === 'bn' ? 'আমি জেগে আছি! 👋' : "I'm awake! 👋", 2500);
-            startPetIdleFacts();
-            resetInactivityTimer();
-        }
-
-        function toggleMinimize() {
-            if (petIsMinimized) { wakePet(); }
-            else {
-                petIsMinimized = true; petEl.classList.add('minimized'); petSleepMode = true;
-                stopWalking();
-                const zzzEls = petEl.querySelectorAll('.pet-zzz'); zzzEls.forEach(z => z.style.display = 'block');
-                if (petFactInterval) clearInterval(petFactInterval);
-                if (petBubbleTimeout) { clearTimeout(petBubbleTimeout); petBubble.classList.remove('show'); petBubbleTimeout = null; }
-                if (inactivityTimer) clearTimeout(inactivityTimer);
-                if (walkInterval) clearTimeout(walkInterval);
-            }
-        }
-
-        petEl.addEventListener('pointerdown', function(e) {
-            if (e.pointerType === 'mouse') {
-                isPetDragging = true;
-                stopWalking();
-                petDragStartX = e.clientX; petDragStartY = e.clientY;
-                const rect = petEl.getBoundingClientRect();
-                petOrigRight = window.innerWidth - rect.right;
-                petOrigBottom = window.innerHeight - rect.bottom;
-                petEl.classList.add('dragging');
-                petEl.setPointerCapture(e.pointerId);
-                e.preventDefault();
-            }
-        });
-
-        document.addEventListener('pointermove', function(e) {
-            if (!isPetDragging) return;
-            const dx = e.clientX - petDragStartX;
-            const dy = e.clientY - petDragStartY;
-            petOrigRight = Math.max(0, Math.min(window.innerWidth - 60, window.innerWidth - (petDragStartX + dx + petEl.offsetWidth / 2)));
-            petOrigBottom = Math.max(60, Math.min(window.innerHeight - 80, window.innerHeight - (petDragStartY + dy + petEl.offsetHeight / 2)));
-            updatePetPosition();
-        });
-
-        document.addEventListener('pointerup', function(e) {
-            if (!isPetDragging) return;
-            const dx = Math.abs(e.clientX - petDragStartX);
-            const dy = Math.abs(e.clientY - petDragStartY);
-            const moved = dx > 4 || dy > 4;
-            isPetDragging = false;
-            petEl.classList.remove('dragging');
-            petEl.releasePointerCapture(e.pointerId);
-            if (!moved) {
-                petCelebrate();
-                showPetBubble(getRandomFact(), 4000);
-            }
-            resetInactivityTimer();
-        });
-
-        petEl.addEventListener('dblclick', function(e) { toggleMinimize(); e.preventDefault(); });
-
-        document.addEventListener('mousemove', function(e) {
-            if (isPetDragging) return;
-            const petRect = petEl.getBoundingClientRect();
-            const petCx = petRect.left + petRect.width / 2;
-            const petCy = petRect.top + petRect.height / 2;
-            const dx = (e.clientX - petCx) / 80;
-            const dy = (e.clientY - petCy) / 80;
-            const clampedX = Math.max(-1.2, Math.min(1.2, dx));
-            const clampedY = Math.max(-1.2, Math.min(1.2, dy));
-            petPupils.forEach(p => { p.style.transform = `translate(${clampedX*2.5}px,${clampedY*2.5}px)`; });
-            const dist = Math.sqrt((e.clientX - petCx) ** 2 + (e.clientY - petCy) ** 2);
-            if (dist < 100 && petSleepMode && !isPetDragging) wakePet();
-            if (dist < 80) resetInactivityTimer();
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!isPetDragging && petEl && !petEl.contains(e.target)) resetInactivityTimer();
-        });
-
-        updatePetPosition();
-        const initZzz = petEl.querySelectorAll('.pet-zzz');
-        initZzz.forEach(z => z.style.display = 'none');
-        setTimeout(() => { startPetIdleFacts(); resetInactivityTimer(); }, 5000);
-
-        renderUI();
-    </script>
+        requestAnimationFrame(anim);
+      }
+      anim();
+    })();
+  </script>
 </body>
 </html>
